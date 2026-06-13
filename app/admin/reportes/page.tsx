@@ -5,8 +5,14 @@ import {
   DollarSign, ShoppingCart, TrendingUp, Percent,
   Download, RefreshCw, Calendar, Loader2, AlertTriangle,
   Package, MapPin, CreditCard, BarChart3, ArrowUpRight,
-  ArrowDownRight, Users, CheckCircle, Truck, Clock, XCircle,
+  ArrowDownRight, CheckCircle, Truck, Clock, XCircle, Store,
 } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
 import { formatPrice } from '@/lib/data'
 import { SalesChart } from '@/components/admin/sales-chart'
 
@@ -32,62 +38,49 @@ interface Stats {
   orderStatusBreakdown: { status: string; count: number }[]
 }
 
-const PERIODS = [
-  { value: 'week',    label: '7 días' },
-  { value: 'month',   label: '30 días' },
-  { value: 'quarter', label: '90 días' },
-  { value: 'year',    label: '1 año' },
-]
-
-const STATUS_CONFIG: Record<string, { label: string; icon: any; color: string; bg: string }> = {
-  pending:    { label: 'Pago pendiente', icon: Clock,        color: 'text-amber-400',   bg: 'bg-amber-400' },
-  confirmed:  { label: 'Confirmados',    icon: CheckCircle,  color: 'text-blue-400',    bg: 'bg-blue-400' },
-  processing: { label: 'Preparando',     icon: Package,      color: 'text-purple-400',  bg: 'bg-purple-400' },
-  shipped:    { label: 'En camino',      icon: Truck,        color: 'text-indigo-400',  bg: 'bg-indigo-400' },
-  delivered:  { label: 'Entregados',     icon: CheckCircle,  color: 'text-emerald-400', bg: 'bg-emerald-400' },
-  cancelled:  { label: 'Cancelados',     icon: XCircle,      color: 'text-red-400',     bg: 'bg-red-400' },
+const STATUS_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
+  pending:    { label: 'Pago pendiente', icon: Clock,        color: 'text-amber-500'   },
+  confirmed:  { label: 'Confirmados',    icon: CheckCircle,  color: 'text-blue-500'    },
+  processing: { label: 'Preparando',     icon: Package,      color: 'text-purple-500'  },
+  shipped:    { label: 'En camino',      icon: Truck,        color: 'text-indigo-500'  },
+  delivered:  { label: 'Entregados',     icon: CheckCircle,  color: 'text-green-500'   },
+  cancelled:  { label: 'Cancelados',     icon: XCircle,      color: 'text-red-500'     },
 }
 
-function GrowthBadge({ value }: { value: number }) {
-  if (value === 0) return <span className="text-[11px] text-neutral-600">Sin cambio</span>
+const PAYMENT_LABELS: Record<string, string> = {
+  COD: 'Contra entrega', WOMPI: 'Online (Wompi)',
+  efectivo: 'Efectivo', transferencia: 'Transferencia',
+  nequi: 'Nequi', daviplata: 'Daviplata',
+}
+
+function GrowthIndicator({ value }: { value: number }) {
+  if (value === 0) return <span className="text-xs text-muted-foreground">Sin cambio</span>
   const pos = value > 0
   return (
-    <span className={`inline-flex items-center gap-0.5 text-[11px] font-semibold ${pos ? 'text-emerald-400' : 'text-red-400'}`}>
+    <span className={`inline-flex items-center gap-0.5 text-xs font-medium ${pos ? 'text-green-500' : 'text-red-500'}`}>
       {pos ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
       {pos ? '+' : ''}{value.toFixed(1)}% vs anterior
     </span>
   )
 }
 
-function ProgressBar({ value, max, color = 'bg-white' }: { value: number; max: number; color?: string }) {
-  const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0
-  return (
-    <div className="h-1 bg-[#222] rounded-full overflow-hidden flex-1">
-      <div className={`h-full rounded-full ${color} transition-all duration-500`} style={{ width: `${pct}%` }} />
-    </div>
-  )
-}
-
 export default function ReportesPage() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [period, setPeriod] = useState('month')
   const [exporting, setExporting] = useState<string | null>(null)
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
-  const fetchStats = useCallback(async () => {
-    setLoading(true)
+  const fetchStats = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true)
+    else setLoading(true)
     try {
       const res = await fetch(`/api/admin/stats?period=${period}`)
       const data = await res.json()
-      if (data.success) {
-        setStats(data.stats)
-        setLastUpdated(new Date())
-      }
-    } catch {
-      // silent
-    } finally {
+      if (data.success) setStats(data.stats)
+    } catch { /* silent */ } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }, [period])
 
@@ -111,14 +104,22 @@ export default function ReportesPage() {
 
   if (loading) {
     return (
-      <div className="pt-16 lg:pt-0 space-y-4">
-        <div className="h-8 w-48 bg-[#1a1a1a] rounded-lg animate-pulse" />
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {[...Array(4)].map((_, i) => <div key={i} className="h-28 bg-[#1a1a1a] rounded-2xl animate-pulse" />)}
+      <div className="pt-16 lg:pt-0 space-y-6">
+        <div className="flex justify-between">
+          <div className="h-8 w-40 bg-secondary rounded-lg skeleton-shimmer" />
+          <div className="h-9 w-48 bg-secondary rounded-lg skeleton-shimmer" />
         </div>
-        <div className="h-72 bg-[#1a1a1a] rounded-2xl animate-pulse" />
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          {[...Array(4)].map((_, i) => <div key={i} className="h-48 bg-[#1a1a1a] rounded-2xl animate-pulse" />)}
+        <div className="space-y-3">
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+            {[...Array(3)].map((_, i) => <div key={i} className="h-28 bg-secondary rounded-xl skeleton-shimmer" />)}
+          </div>
+          <div className="grid gap-3 grid-cols-4">
+            {[...Array(4)].map((_, i) => <div key={i} className="h-20 bg-secondary rounded-xl skeleton-shimmer" />)}
+          </div>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="lg:col-span-2 h-80 bg-secondary rounded-xl skeleton-shimmer" />
+          <div className="h-80 bg-secondary rounded-xl skeleton-shimmer" />
         </div>
       </div>
     )
@@ -127,372 +128,423 @@ export default function ReportesPage() {
   if (!stats) {
     return (
       <div className="pt-16 lg:pt-0 flex flex-col items-center justify-center h-80 gap-4">
-        <AlertTriangle className="h-8 w-8 text-neutral-700" />
-        <p className="text-neutral-500 text-sm">Error al cargar reportes</p>
-        <button onClick={fetchStats} className="text-white text-[12px] border border-[#2a2a2a] px-4 h-9 rounded-xl hover:bg-white/5 transition-colors">
-          Reintentar
-        </button>
+        <div className="h-16 w-16 rounded-2xl bg-secondary flex items-center justify-center">
+          <AlertTriangle className="h-8 w-8 text-muted-foreground" />
+        </div>
+        <p className="text-muted-foreground">Error al cargar reportes</p>
+        <Button onClick={() => fetchStats()} variant="outline">
+          <RefreshCw className="mr-2 h-4 w-4" /> Reintentar
+        </Button>
       </div>
     )
   }
 
-  // Status funnel data
-  const statusMap = Object.fromEntries(
-    stats.orderStatusBreakdown.map(s => [s.status, Number(s.count)])
-  )
+  const statusMap = Object.fromEntries(stats.orderStatusBreakdown.map(s => [s.status, Number(s.count)]))
   const funnelSteps = [
-    { key: 'all',       label: 'Creados',    value: stats.totalAllOrders,   color: 'bg-neutral-500' },
-    { key: 'confirmed', label: 'Confirmados',value: (statusMap.confirmed ?? 0) + (statusMap.processing ?? 0) + (statusMap.shipped ?? 0) + (statusMap.delivered ?? 0), color: 'bg-blue-500' },
-    { key: 'shipped',   label: 'Enviados',   value: (statusMap.shipped ?? 0) + (statusMap.delivered ?? 0), color: 'bg-indigo-500' },
-    { key: 'delivered', label: 'Entregados', value: statusMap.delivered ?? 0, color: 'bg-emerald-500' },
+    { label: 'Creados',     value: stats.totalAllOrders, color: 'bg-secondary' },
+    { label: 'Confirmados', value: (statusMap.confirmed ?? 0) + (statusMap.processing ?? 0) + (statusMap.shipped ?? 0) + (statusMap.delivered ?? 0), color: 'bg-blue-500' },
+    { label: 'Enviados',    value: (statusMap.shipped ?? 0) + (statusMap.delivered ?? 0), color: 'bg-indigo-500' },
+    { label: 'Entregados',  value: statusMap.delivered ?? 0, color: 'bg-green-500' },
   ]
   const maxFunnel = funnelSteps[0].value || 1
-
-  // Payment method total revenue
   const totalPayRev = stats.paymentMethodStats.reduce((s, p) => s + Number(p.revenue), 0)
+  const totalCatRev = stats.categoryStats.reduce((s, c) => s + Number(c.revenue), 0)
   const totalCityRev = stats.cityStats.reduce((s, c) => s + Number(c.revenue), 0)
-  const totalCatRev  = stats.categoryStats.reduce((s, c) => s + Number(c.revenue), 0)
 
   return (
-    <div className="pt-16 lg:pt-0 space-y-5">
+    <div className="pt-16 lg:pt-0 space-y-6">
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <p className="text-[11px] text-neutral-600 tracking-[0.2em] uppercase mb-1">Análisis</p>
-          <h1 className="text-2xl font-black tracking-tight text-white">REPORTES</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Reportes</h1>
+          <p className="text-muted-foreground mt-1 text-sm">Análisis de ventas y rendimiento de la tienda</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {lastUpdated && (
-            <span className="text-[11px] text-neutral-600 mr-1">
-              Actualizado {lastUpdated.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
-            </span>
-          )}
-          <button
-            onClick={fetchStats}
-            className="flex items-center gap-1.5 border border-[#222] text-neutral-400 hover:text-white text-[12px] px-3 h-8 rounded-lg hover:bg-white/5 transition-all"
-          >
-            <RefreshCw className="h-3 w-3" />
-            Actualizar
-          </button>
-          {/* Period selector */}
-          <div className="flex items-center gap-1 bg-[#111] border border-[#222] rounded-lg p-0.5">
-            {PERIODS.map(p => (
-              <button
-                key={p.value}
-                onClick={() => setPeriod(p.value)}
-                className={`px-3 h-7 rounded-md text-[12px] font-medium transition-all ${
-                  period === p.value ? 'bg-white text-black' : 'text-neutral-500 hover:text-white'
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={() => fetchStats(true)} disabled={refreshing} className="h-9 w-9 shrink-0">
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+          </Button>
+          <Select value={period} onValueChange={setPeriod}>
+            <SelectTrigger className="w-[160px] h-9 bg-card">
+              <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="week">Últimos 7 días</SelectItem>
+              <SelectItem value="month">Último mes</SelectItem>
+              <SelectItem value="quarter">Último trimestre</SelectItem>
+              <SelectItem value="year">Último año</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {[
-          {
-            label: 'Ingresos',
-            value: formatPrice(stats.totalSales),
-            sub: <GrowthBadge value={stats.salesGrowth} />,
-            icon: DollarSign, accent: 'text-emerald-400', bg: 'bg-emerald-400/10',
-          },
-          {
-            label: 'Ventas pagadas',
-            value: stats.totalOrders,
-            sub: <GrowthBadge value={stats.ordersGrowth} />,
-            icon: ShoppingCart, accent: 'text-blue-400', bg: 'bg-blue-400/10',
-          },
-          {
-            label: 'Ticket promedio',
-            value: formatPrice(stats.avgOrderValue),
-            sub: <span className="text-[11px] text-neutral-600">{stats.totalOrders} ventas totales</span>,
-            icon: TrendingUp, accent: 'text-purple-400', bg: 'bg-purple-400/10',
-          },
-          {
-            label: 'Conversión',
-            value: `${stats.conversionRate.toFixed(1)}%`,
-            sub: <span className="text-[11px] text-neutral-600">{stats.totalAllOrders} creados · {stats.rejectedOrders} rechazados</span>,
-            icon: Percent, accent: 'text-amber-400', bg: 'bg-amber-400/10',
-          },
-        ].map(card => {
-          const Icon = card.icon
-          return (
-            <div key={card.label} className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl p-5">
-              <div className="flex items-start justify-between mb-3">
-                <p className="text-[12px] text-neutral-500">{card.label}</p>
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${card.bg}`}>
-                  <Icon className={`h-4 w-4 ${card.accent}`} />
+      {/* Stats — 3 principales + 4 secundarios */}
+      <div className="space-y-3">
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+          <Card className="admin-card">
+            <CardContent className="pt-5 pb-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1">Total ingresos</p>
+                  <div className="text-2xl font-bold text-green-500">{formatPrice(stats.totalSales)}</div>
+                  <div className="mt-1"><GrowthIndicator value={stats.salesGrowth} /></div>
+                </div>
+                <div className="h-9 w-9 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
+                  <DollarSign className="h-4 w-4 text-green-500" />
                 </div>
               </div>
-              <p className="text-2xl font-black text-white tracking-tight">{card.value}</p>
-              <div className="mt-2">{card.sub}</div>
-            </div>
-          )
-        })}
-      </div>
+            </CardContent>
+          </Card>
 
-      {/* Revenue chart + Breakdown row */}
-      <div className="grid lg:grid-cols-3 gap-3">
-        <div className="lg:col-span-2 bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-[13px] font-bold text-white">Ingresos por período</h2>
-              {(stats.totalOrders > 0 || stats.physicalSalesCount > 0) && (
-                <p className="text-[11px] text-neutral-600 mt-0.5">
-                  Online {formatPrice(stats.onlineSales)} · Físico {formatPrice(stats.physicalSales)} ({stats.physicalSalesCount})
-                </p>
-              )}
-            </div>
-            <button
-              onClick={() => exportReport('sales')}
-              disabled={exporting === 'sales'}
-              className="flex items-center gap-1.5 text-[11px] text-neutral-500 hover:text-white border border-[#222] px-2.5 h-7 rounded-lg hover:bg-white/5 transition-all disabled:opacity-50"
-            >
-              {exporting === 'sales' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
-              CSV
-            </button>
-          </div>
-          <SalesChart data={stats.weeklySales} />
+          <Card className="admin-card">
+            <CardContent className="pt-5 pb-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1">Ventas online</p>
+                  <div className="text-2xl font-bold text-blue-500">{formatPrice(stats.onlineSales)}</div>
+                  <p className="text-xs text-muted-foreground mt-1">{stats.totalOrders} pedidos pagados</p>
+                </div>
+                <div className="h-9 w-9 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+                  <ShoppingCart className="h-4 w-4 text-blue-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="admin-card">
+            <CardContent className="pt-5 pb-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1">Ventas físicas</p>
+                  <div className="text-2xl font-bold text-purple-500">{formatPrice(stats.physicalSales)}</div>
+                  <p className="text-xs text-muted-foreground mt-1">{stats.physicalSalesCount} ventas registradas</p>
+                </div>
+                <div className="h-9 w-9 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0">
+                  <Store className="h-4 w-4 text-purple-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Order funnel */}
-        <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl p-5">
-          <h2 className="text-[13px] font-bold text-white mb-4">Embudo de pedidos</h2>
-          <div className="space-y-4">
-            {funnelSteps.map((step, i) => {
-              const pct = funnelSteps[0].value > 0 ? Math.round(step.value / funnelSteps[0].value * 100) : 0
-              return (
-                <div key={step.key}>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[12px] text-neutral-400">{step.label}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[12px] font-bold text-white tabular-nums">{step.value}</span>
-                      {i > 0 && <span className="text-[10px] text-neutral-600 w-8 text-right">{pct}%</span>}
-                    </div>
-                  </div>
-                  <div className="h-2 bg-[#1a1a1a] rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${step.color} transition-all duration-700`}
-                      style={{ width: `${Math.min(100, (step.value / maxFunnel) * 100)}%` }}
-                    />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
+          <Card className="admin-card">
+            <CardContent className="pt-4 pb-3">
+              <div className="flex items-center gap-2 mb-1">
+                <TrendingUp className="h-3.5 w-3.5 text-orange-500" />
+                <p className="text-xs text-muted-foreground">Ticket promedio</p>
+              </div>
+              <p className="text-base font-bold">{formatPrice(stats.avgOrderValue)}</p>
+              <p className="text-[11px] text-muted-foreground">por pedido</p>
+            </CardContent>
+          </Card>
 
-          {/* Status pills */}
-          <div className="mt-5 pt-4 border-t border-[#1a1a1a] space-y-2">
-            {Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
-              const count = statusMap[key] ?? 0
-              if (count === 0) return null
-              const Icon = cfg.icon
-              return (
-                <div key={key} className="flex items-center justify-between text-[12px]">
-                  <div className="flex items-center gap-2">
-                    <Icon className={`h-3.5 w-3.5 ${cfg.color}`} />
-                    <span className="text-neutral-500">{cfg.label}</span>
-                  </div>
-                  <span className="font-bold text-white tabular-nums">{count}</span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
+          <Card className="admin-card">
+            <CardContent className="pt-4 pb-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Percent className="h-3.5 w-3.5 text-amber-500" />
+                <p className="text-xs text-muted-foreground">Conversión</p>
+              </div>
+              <p className="text-base font-bold">{stats.conversionRate.toFixed(1)}%</p>
+              <p className="text-[11px] text-muted-foreground">{stats.totalAllOrders} creados</p>
+            </CardContent>
+          </Card>
 
-      {/* Products + Cities row */}
-      <div className="grid lg:grid-cols-2 gap-3">
+          <Card className="admin-card">
+            <CardContent className="pt-4 pb-3">
+              <div className="flex items-center gap-2 mb-1">
+                <ShoppingCart className="h-3.5 w-3.5 text-indigo-500" />
+                <p className="text-xs text-muted-foreground">Pedidos totales</p>
+              </div>
+              <p className="text-base font-bold">{stats.totalOrders}</p>
+              <div className="mt-0.5"><GrowthIndicator value={stats.ordersGrowth} /></div>
+            </CardContent>
+          </Card>
 
-        {/* Top products */}
-        <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-[#1a1a1a]">
-            <h2 className="text-[13px] font-bold text-white flex items-center gap-2">
-              <Package className="h-3.5 w-3.5 text-neutral-600" /> Productos más vendidos
-            </h2>
-            <button
-              onClick={() => exportReport('inventory')}
-              disabled={exporting === 'inventory'}
-              className="flex items-center gap-1.5 text-[11px] text-neutral-500 hover:text-white border border-[#222] px-2.5 h-7 rounded-lg hover:bg-white/5 transition-all disabled:opacity-50"
-            >
-              {exporting === 'inventory' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
-              CSV
-            </button>
-          </div>
-          {stats.topProducts.length === 0 ? (
-            <div className="flex items-center justify-center py-12 text-neutral-700">
-              <Package className="h-8 w-8" />
-            </div>
-          ) : (
-            <div className="divide-y divide-[#1a1a1a]">
-              {stats.topProducts.map((p, i) => {
-                const maxRev = Math.max(...stats.topProducts.map(x => Number(x.revenue)))
-                return (
-                  <div key={i} className="px-5 py-3.5 hover:bg-white/[0.02] transition-colors">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className="text-[11px] text-neutral-600 w-4 tabular-nums flex-shrink-0">#{i + 1}</span>
-                        <span className="text-[13px] font-medium text-white truncate">{p.name}</span>
-                      </div>
-                      <div className="flex items-center gap-3 flex-shrink-0 ml-3">
-                        <span className="text-[11px] text-neutral-500 tabular-nums">{p.sold} uds</span>
-                        <span className="text-[13px] font-black text-white tabular-nums">{formatPrice(p.revenue)}</span>
-                      </div>
-                    </div>
-                    <ProgressBar value={Number(p.revenue)} max={maxRev} color="bg-white/30" />
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Cities */}
-        <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-[#1a1a1a]">
-            <h2 className="text-[13px] font-bold text-white flex items-center gap-2">
-              <MapPin className="h-3.5 w-3.5 text-neutral-600" /> Ventas por ciudad
-            </h2>
-            <button
-              onClick={() => exportReport('orders')}
-              disabled={exporting === 'orders'}
-              className="flex items-center gap-1.5 text-[11px] text-neutral-500 hover:text-white border border-[#222] px-2.5 h-7 rounded-lg hover:bg-white/5 transition-all disabled:opacity-50"
-            >
-              {exporting === 'orders' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
-              CSV
-            </button>
-          </div>
-          {stats.cityStats.length === 0 ? (
-            <div className="flex items-center justify-center py-12 text-neutral-700">
-              <MapPin className="h-8 w-8" />
-            </div>
-          ) : (
-            <div className="divide-y divide-[#1a1a1a]">
-              {stats.cityStats.slice(0, 7).map((c, i) => (
-                <div key={i} className="px-5 py-3.5 hover:bg-white/[0.02] transition-colors">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-3">
-                      <span className="text-[11px] text-neutral-600 w-4 tabular-nums">{i + 1}</span>
-                      <span className="text-[13px] font-medium text-white">{c.city || 'Sin ciudad'}</span>
-                    </div>
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                      <span className="text-[11px] text-neutral-500 tabular-nums">{c.orders} ped.</span>
-                      <span className="text-[13px] font-black text-white tabular-nums w-20 text-right">{formatPrice(c.revenue)}</span>
-                    </div>
-                  </div>
-                  <ProgressBar value={Number(c.revenue)} max={totalCityRev} color="bg-indigo-400/50" />
-                </div>
-              ))}
-            </div>
-          )}
+          <Card className="admin-card">
+            <CardContent className="pt-4 pb-3">
+              <div className="flex items-center gap-2 mb-1">
+                <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
+                <p className="text-xs text-muted-foreground">Clientes</p>
+              </div>
+              <p className="text-base font-bold">{stats.totalCustomers}</p>
+              <p className="text-[11px] text-muted-foreground">registrados</p>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
-      {/* Payment methods + Categories */}
-      <div className="grid lg:grid-cols-2 gap-3">
-
-        {/* Payment methods */}
-        <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl p-5">
-          <h2 className="text-[13px] font-bold text-white flex items-center gap-2 mb-5">
-            <CreditCard className="h-3.5 w-3.5 text-neutral-600" /> Métodos de pago
-          </h2>
-          {stats.paymentMethodStats.length === 0 ? (
-            <p className="text-neutral-700 text-sm text-center py-8">Sin datos</p>
-          ) : (
-            <div className="space-y-5">
-              {stats.paymentMethodStats.map((pm, i) => {
-                const pct = totalPayRev > 0 ? (Number(pm.revenue) / totalPayRev) * 100 : 0
-                const label = pm.method === 'COD' ? 'Contra entrega' : pm.method === 'WOMPI' ? 'Online (Wompi)' : pm.method === 'efectivo' ? 'Efectivo' : pm.method === 'transferencia' ? 'Transferencia' : pm.method
-                const accent = pm.method === 'COD' ? 'bg-[#25d366]' : pm.method === 'efectivo' ? 'bg-amber-400' : pm.method === 'transferencia' ? 'bg-blue-400' : 'bg-white'
-                return (
-                  <div key={i}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[13px] font-semibold text-white">{label}</span>
-                      <div className="flex items-center gap-3">
-                        <span className="text-[11px] text-neutral-600 tabular-nums">{pm.orders} pedidos</span>
-                        <span className="text-[13px] font-black text-white tabular-nums">{formatPrice(pm.revenue)}</span>
-                        <span className="text-[11px] text-neutral-600 w-8 text-right">{pct.toFixed(0)}%</span>
-                      </div>
-                    </div>
-                    <div className="h-2 bg-[#1a1a1a] rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full ${accent} transition-all duration-700`} style={{ width: `${pct}%` }} />
-                    </div>
-                  </div>
-                )
-              })}
+      {/* Gráfico + Embudo */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="admin-card lg:col-span-2">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base font-semibold">Ingresos por período</CardTitle>
+                <CardDescription className="mt-0.5">
+                  Online {formatPrice(stats.onlineSales)} · Físico {formatPrice(stats.physicalSales)}
+                </CardDescription>
+              </div>
+              <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => exportReport('sales')} disabled={exporting === 'sales'}>
+                {exporting === 'sales' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+                CSV
+              </Button>
             </div>
-          )}
-        </div>
+          </CardHeader>
+          <CardContent className="pt-2">
+            <SalesChart data={stats.weeklySales} />
+          </CardContent>
+        </Card>
 
-        {/* Categories */}
-        <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl p-5">
-          <h2 className="text-[13px] font-bold text-white flex items-center gap-2 mb-5">
-            <BarChart3 className="h-3.5 w-3.5 text-neutral-600" /> Por categoría
-          </h2>
-          {stats.categoryStats.length === 0 ? (
-            <p className="text-neutral-700 text-sm text-center py-8">Sin datos</p>
-          ) : (
+        <Card className="admin-card">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold">Embudo de pedidos</CardTitle>
+          </CardHeader>
+          <CardContent>
             <div className="space-y-4">
-              {stats.categoryStats.map((cat, i) => {
-                const pct = totalCatRev > 0 ? (Number(cat.revenue) / totalCatRev) * 100 : 0
+              {funnelSteps.map((step, i) => {
+                const pct = maxFunnel > 0 ? Math.round(step.value / maxFunnel * 100) : 0
                 return (
-                  <div key={i}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[13px] font-semibold text-white">{cat.category}</span>
-                      <div className="flex items-center gap-3">
-                        <span className="text-[11px] text-neutral-600 tabular-nums">{cat.units} uds</span>
-                        <span className="text-[13px] font-black text-white tabular-nums">{formatPrice(cat.revenue)}</span>
-                        <span className="text-[11px] text-neutral-600 w-8 text-right">{pct.toFixed(0)}%</span>
+                  <div key={step.label}>
+                    <div className="flex items-center justify-between mb-1.5 text-sm">
+                      <span className="text-muted-foreground">{step.label}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold tabular-nums">{step.value}</span>
+                        {i > 0 && <span className="text-xs text-muted-foreground w-8 text-right">{pct}%</span>}
                       </div>
                     </div>
-                    <ProgressBar value={Number(cat.revenue)} max={totalCatRev} color="bg-purple-400/50" />
+                    <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full ${step.color} transition-all duration-700`} style={{ width: `${(step.value / maxFunnel) * 100}%` }} />
+                    </div>
                   </div>
                 )
               })}
             </div>
-          )}
-        </div>
+            <div className="mt-5 pt-4 border-t border-border space-y-2">
+              {Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
+                const count = statusMap[key] ?? 0
+                if (count === 0) return null
+                const Icon = cfg.icon
+                return (
+                  <div key={key} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <Icon className={`h-3.5 w-3.5 ${cfg.color}`} />
+                      <span className="text-muted-foreground">{cfg.label}</span>
+                    </div>
+                    <span className="font-bold tabular-nums">{count}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Exports */}
-      <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl p-5">
-        <h2 className="text-[13px] font-bold text-white mb-1">Exportar datos</h2>
-        <p className="text-[11px] text-neutral-600 mb-4">CSV del período seleccionado: {PERIODS.find(p => p.value === period)?.label}</p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {[
-            { key: 'sales',       label: 'Ventas',       icon: DollarSign,   color: 'text-emerald-400' },
-            { key: 'orders',      label: 'Pedidos',       icon: ShoppingCart, color: 'text-blue-400' },
-            { key: 'inventory',   label: 'Inventario',    icon: Package,      color: 'text-amber-400' },
-            { key: 'accounting',  label: 'Contabilidad',  icon: BarChart3,    color: 'text-purple-400' },
-          ].map(item => {
-            const Icon = item.icon
-            return (
-              <button
+      {/* Top productos + Ciudades */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="admin-card overflow-hidden">
+          <CardHeader className="pb-0">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <Package className="h-4 w-4 text-muted-foreground" /> Productos más vendidos
+              </CardTitle>
+              <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => exportReport('inventory')} disabled={exporting === 'inventory'}>
+                {exporting === 'inventory' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+                CSV
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0 mt-3">
+            {stats.topProducts.length === 0 ? (
+              <div className="flex items-center justify-center py-12 text-muted-foreground">
+                <Package className="h-8 w-8" />
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {stats.topProducts.map((p, i) => {
+                  const maxRev = Math.max(...stats.topProducts.map(x => Number(x.revenue)))
+                  const pct = maxRev > 0 ? (Number(p.revenue) / maxRev) * 100 : 0
+                  return (
+                    <div key={i} className="px-6 py-3 hover:bg-secondary/50 transition-colors">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="text-xs text-muted-foreground w-4 tabular-nums shrink-0">#{i + 1}</span>
+                          <span className="text-sm font-medium truncate">{p.name}</span>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0 ml-3">
+                          <span className="text-xs text-muted-foreground tabular-nums">{p.sold} uds</span>
+                          <span className="text-sm font-bold tabular-nums">{formatPrice(p.revenue)}</span>
+                        </div>
+                      </div>
+                      <div className="h-1 bg-secondary rounded-full overflow-hidden">
+                        <div className="h-full rounded-full bg-foreground/20 transition-all duration-700" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="admin-card overflow-hidden">
+          <CardHeader className="pb-0">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-muted-foreground" /> Ventas por ciudad
+              </CardTitle>
+              <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => exportReport('orders')} disabled={exporting === 'orders'}>
+                {exporting === 'orders' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+                CSV
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0 mt-3">
+            {stats.cityStats.length === 0 ? (
+              <div className="flex items-center justify-center py-12 text-muted-foreground">
+                <MapPin className="h-8 w-8" />
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {stats.cityStats.slice(0, 7).map((c, i) => {
+                  const pct = totalCityRev > 0 ? (Number(c.revenue) / totalCityRev) * 100 : 0
+                  return (
+                    <div key={i} className="px-6 py-3 hover:bg-secondary/50 transition-colors">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-muted-foreground w-4 tabular-nums">{i + 1}</span>
+                          <span className="text-sm font-medium">{c.city || 'Sin ciudad'}</span>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className="text-xs text-muted-foreground tabular-nums">{c.orders} ped.</span>
+                          <span className="text-sm font-bold tabular-nums w-20 text-right">{formatPrice(c.revenue)}</span>
+                        </div>
+                      </div>
+                      <div className="h-1 bg-secondary rounded-full overflow-hidden">
+                        <div className="h-full rounded-full bg-indigo-500/40 transition-all duration-700" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Métodos de pago + Categorías */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="admin-card">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <CreditCard className="h-4 w-4 text-muted-foreground" /> Métodos de pago
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {stats.paymentMethodStats.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8 text-sm">Sin datos</p>
+            ) : (
+              <div className="space-y-4">
+                {stats.paymentMethodStats.map((pm, i) => {
+                  const pct = totalPayRev > 0 ? (Number(pm.revenue) / totalPayRev) * 100 : 0
+                  const label = PAYMENT_LABELS[pm.method] || pm.method
+                  return (
+                    <div key={i}>
+                      <div className="flex items-center justify-between mb-2 text-sm">
+                        <span className="font-medium">{label}</span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-muted-foreground tabular-nums">{pm.orders} pedidos</span>
+                          <span className="font-bold tabular-nums">{formatPrice(pm.revenue)}</span>
+                          <span className="text-xs text-muted-foreground w-8 text-right">{pct.toFixed(0)}%</span>
+                        </div>
+                      </div>
+                      <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                        <div className="h-full rounded-full bg-foreground/30 transition-all duration-700 progress-animated" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="admin-card">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-muted-foreground" /> Por categoría
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {stats.categoryStats.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8 text-sm">Sin datos</p>
+            ) : (
+              <div className="space-y-4">
+                {stats.categoryStats.map((cat, i) => {
+                  const pct = totalCatRev > 0 ? (Number(cat.revenue) / totalCatRev) * 100 : 0
+                  return (
+                    <div key={i}>
+                      <div className="flex items-center justify-between mb-2 text-sm">
+                        <span className="font-medium">{cat.category}</span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-muted-foreground tabular-nums">{cat.units} uds</span>
+                          <span className="font-bold tabular-nums">{formatPrice(cat.revenue)}</span>
+                          <span className="text-xs text-muted-foreground w-8 text-right">{pct.toFixed(0)}%</span>
+                        </div>
+                      </div>
+                      <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                        <div className="h-full rounded-full bg-purple-500/40 transition-all duration-700" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Exportar */}
+      <Card className="admin-card">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold">
+            <Download className="h-4 w-4 text-muted-foreground" /> Exportar datos
+          </CardTitle>
+          <CardDescription>Descarga los datos del período seleccionado en formato CSV</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { key: 'sales',      label: 'Ventas',      desc: 'Resumen de ingresos',  icon: DollarSign,   color: 'text-green-500 bg-green-500/10' },
+              { key: 'orders',     label: 'Pedidos',     desc: 'Detalle de órdenes',   icon: ShoppingCart, color: 'text-blue-500 bg-blue-500/10' },
+              { key: 'inventory',  label: 'Inventario',  desc: 'Stock actual',          icon: Package,      color: 'text-orange-500 bg-orange-500/10' },
+              { key: 'accounting', label: 'Contabilidad',desc: 'Todas las transacciones', icon: BarChart3, color: 'text-purple-500 bg-purple-500/10' },
+            ].map(item => (
+              <Button
                 key={item.key}
+                variant="outline"
                 onClick={() => exportReport(item.key)}
-                disabled={!!exporting}
-                className="flex items-center gap-3 p-3.5 bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl hover:border-[#2a2a2a] hover:bg-white/[0.02] transition-all disabled:opacity-50 text-left group"
+                disabled={exporting === item.key}
+                className="h-auto py-4 justify-start gap-4 bg-secondary/30 hover:bg-secondary border-transparent hover:border-border"
               >
                 {exporting === item.key ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-neutral-500 flex-shrink-0" />
+                  <Loader2 className="h-5 w-5 animate-spin shrink-0" />
                 ) : (
-                  <Icon className={`h-4 w-4 ${item.color} flex-shrink-0`} />
+                  <div className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${item.color}`}>
+                    <item.icon className="h-5 w-5" />
+                  </div>
                 )}
-                <div>
-                  <p className="text-[12px] font-semibold text-white">{item.label}</p>
-                  <p className="text-[10px] text-neutral-600">Descargar CSV</p>
+                <div className="text-left">
+                  <p className="font-medium">{item.label}</p>
+                  <p className="text-xs text-muted-foreground">{item.desc}</p>
                 </div>
-                <Download className="h-3 w-3 text-neutral-700 ml-auto group-hover:text-neutral-500 transition-colors" />
-              </button>
-            )
-          })}
-        </div>
-      </div>
+              </Button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
     </div>
   )
 }
