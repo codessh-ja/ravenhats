@@ -1,213 +1,66 @@
 # RavenHats
 
-E-commerce de gorras Goorin Bros con asistente de ventas impulsado por IA conversacional.
+E-commerce de gorras Goorin Bros con asistente de ventas impulsado por inteligencia artificial.
 
 ---
 
-## Stack tecnológico
+## ¿Qué es?
 
-| Capa | Tecnología |
-|---|---|
-| Frontend | Next.js 15, React 19, TailwindCSS |
-| Componentes | Radix UI, Framer Motion, Lucide Icons |
-| Backend | Next.js API Routes (Node.js) |
-| Base de datos | MySQL 8 |
-| IA / Chatbot | Google Gemini 2.5 Flash |
-| Pagos | Wompi (Bancolombia) |
-| Email | Resend |
-| Deploy | PM2 + Nginx + VPS Linux |
+RavenHats es una tienda online completa que incluye catálogo de productos, carrito de compras, pasarela de pagos y un chatbot de IA que actúa como asesor de estilo. Todo dentro de una sola aplicación con panel de administración integrado.
 
 ---
 
-## Funcionalidades
+## La tienda
 
-### Tienda
-- Catálogo con filtros por categoría y colección
-- Drops exclusivos con fecha de lanzamiento
-- Carrito persistente con Context API
-- Checkout completo con validación
-- Integración Wompi (tarjeta, PSE, Nequi, contraentrega)
-- Webhook de pagos con idempotencia
-- Rastreo de pedidos por número de orden
-- Cuenta de cliente con historial de compras
+El cliente navega el catálogo y puede filtrar por categoría o colección. Cuando encuentra algo que le interesa lo agrega al carrito y pasa al checkout, donde paga con tarjeta, PSE, Nequi o contraentrega a través de Wompi. Al completar la compra recibe un correo de confirmación y puede rastrear su pedido desde su cuenta.
 
-### Chatbot IA
-- Asistente conversacional con Google Gemini 2.5 Flash
-- Búsqueda semántica de productos en tiempo real (RAG-lite)
-- Base de conocimiento con políticas, precios y FAQs
-- Flujos estructurados: vibes, carrito, rastreo de pedidos
-- Scoring de intención de compra
-- Detección de hesitación con respuesta adaptativa
-- Triggers automáticos de venta por tiempo de sesión
-- Sistema de aprendizaje: productos con más conversiones priorizados
-- Memoria de sesión con localStorage
-- Rate limiting por IP
-
-### Panel Admin
-- Dashboard con métricas en tiempo real
-- Gestión de productos, pedidos y clientes
-- Contabilidad y reportes exportables
-- Analytics del chatbot: sesiones, embudo de conversión, intent score
-- Configuración del sistema
+También hay secciones de **Drops** — lanzamientos exclusivos con fecha — y **Descuentos** con productos en oferta.
 
 ---
 
-## Arquitectura del chatbot
+## El chatbot
 
-```
-Usuario escribe → Widget detecta intención
-       │
-       ├── Flujo estructurado (carrito, vibe, rastreo) → Respuesta inmediata
-       │
-       └── Texto libre → /api/chat/message
-                              │
-                              ├── Clasifica intención (product/support/order/general)
-                              ├── Busca productos en MySQL por keywords
-                              ├── Inyecta: STORE_KNOWLEDGE + productos + perfil usuario
-                              ├── Llama a Gemini 2.5 Flash (max 200 tokens)
-                              └── Retorna respuesta + product IDs sugeridos
-```
+El chatbot es el núcleo diferencial del proyecto. Aparece como un widget flotante en toda la tienda y reemplaza completamente la sección de preguntas frecuentes tradicional.
+
+Cuando el cliente escribe, el sistema identifica el tipo de intención: si está buscando un producto, rastreando un pedido o preguntando por políticas. Dependiendo de eso responde de forma distinta:
+
+- Si pregunta por un producto, busca en la base de datos en tiempo real y muestra los artículos con foto y precio dentro del chat.
+- Si pregunta por un pedido, consulta directamente el estado en la base de datos.
+- Si es una pregunta general, responde usando la base de conocimiento de la tienda: políticas, envíos y garantías.
+
+Las respuestas las genera Google Gemini 2.5 Flash. El tono es colombiano, casual y nunca corporativo.
+
+El chatbot también tiene comportamiento proactivo: si el cliente lleva cierto tiempo sin interactuar, lanza mensajes de enganche automáticamente. Y aprende: los productos que más veces terminan en compra después de ser mencionados en el chat se muestran primero en las próximas recomendaciones.
 
 ---
 
-## Estructura del proyecto
+## Panel de administración
 
-```
-ravenhats/
-├── app/
-│   ├── (tienda)/           # Páginas públicas
-│   ├── admin/              # Panel administrativo
-│   │   └── chatbot/        # Analytics del chatbot IA
-│   └── api/
-│       ├── chat/message/   # Motor IA — endpoint principal
-│       ├── chat/events/    # Tracking de sesiones
-│       ├── chatbot/        # Recomendaciones inteligentes
-│       ├── admin/          # APIs del panel admin
-│       ├── auth/           # Autenticación clientes
-│       ├── orders/         # Gestión de órdenes
-│       ├── products/       # Catálogo
-│       └── webhooks/wompi/ # Webhook de pagos
-├── components/
-│   ├── chatbot/            # Widget flotante completo
-│   ├── admin/              # Componentes del panel admin
-│   ├── layout/             # Header, Footer
-│   └── ui/                 # Componentes Radix UI
-├── lib/
-│   ├── chatbot-context.tsx   # Estado global del chatbot
-│   ├── chatbot-knowledge.ts  # Base de conocimiento
-│   ├── chatbot-scoring.ts    # Scoring de intención de compra
-│   ├── chatbot-human-copy.ts # Copy conversacional
-│   ├── product-learning.ts   # Sistema de aprendizaje
-│   ├── db.ts                 # Pool de conexiones MySQL
-│   └── types.ts              # Tipos globales
-├── scripts/
-│   ├── mysql-schema.sql      # Schema completo de la BD
-│   └── *.sql                 # Migraciones
-├── ecosystem.config.js       # Configuración PM2
-└── nginx.conf                # Reverse proxy Nginx
-```
+Accesible solo para el equipo interno. Tiene todo lo necesario para operar la tienda:
+
+- **Productos** — crear, editar, subir imágenes, gestionar stock y categorías
+- **Pedidos** — ver estado, actualizar, gestionar abonos y pagos pendientes
+- **Clientes** — historial de compras y datos de contacto
+- **Contabilidad** — ingresos, pagos recibidos y exportación de reportes
+- **Analytics del chatbot** — sesiones activas, productos más mencionados, tasa de conversión desde el chat e intent score promedio
 
 ---
 
-## Variables de entorno
+## Tecnologías utilizadas
 
-Crea un archivo `.env` en la raíz del proyecto con las siguientes variables:
-
-```env
-# App
-NEXT_PUBLIC_APP_URL=https://tu-dominio.com
-NODE_ENV=production
-
-# MySQL
-MYSQL_HOST=127.0.0.1
-MYSQL_PORT=3306
-MYSQL_USER=tu_usuario_db
-MYSQL_PASSWORD=tu_password_db
-MYSQL_DATABASE=tu_nombre_db
-
-# Wompi (pagos)
-WOMPI_SANDBOX=false
-NEXT_PUBLIC_WOMPI_PUBLIC_KEY=pub_prod_...
-WOMPI_PRIVATE_KEY=prv_prod_...
-WOMPI_INTEGRITY_KEY=prod_integrity_...
-WOMPI_EVENTS_SECRET=prod_events_...
-
-# Gemini IA
-GEMINI_API_KEY=...
-
-# Email
-RESEND_API_KEY=re_...
-```
-
-> Nunca subas el archivo `.env` al repositorio.
+El frontend está construido con Next.js 15 y React 19, usando TailwindCSS para los estilos y componentes de Radix UI. El backend corre en las API Routes del mismo Next.js conectado a una base de datos MySQL 8. Los pagos pasan por Wompi, los correos los envía Resend y la IA es Google Gemini 2.5 Flash. En producción corre con PM2 sobre un VPS Linux con Nginx como proxy reverso.
 
 ---
 
-## Instalación local
+## Requisitos para correr el proyecto
 
-```bash
-# 1. Clonar
-git clone https://github.com/codessh-ja/ravenhats.git
-cd ravenhats
+Necesitas Node.js, MySQL 8 y claves de los siguientes servicios:
 
-# 2. Instalar dependencias
-npm install
+- **Wompi** — para procesar pagos
+- **Google Gemini** — para el chatbot
+- **Resend** — para los correos transaccionales
 
-# 3. Crear .env
-cp .env.example .env
-# Completar con tus credenciales
-
-# 4. Crear la base de datos
-mysql -u root -e "CREATE DATABASE tu_nombre_db CHARACTER SET utf8mb4;"
-mysql -u root tu_nombre_db < scripts/mysql-schema.sql
-
-# 5. Correr en desarrollo
-npm run dev
-```
-
----
-
-## Despliegue en VPS (Ubuntu)
-
-```bash
-# Dependencias
-apt update && apt install -y nodejs npm nginx mysql-server git
-npm install -g pm2
-
-# Clonar y configurar
-cd /var/www && git clone https://github.com/codessh-ja/ravenhats.git
-cd ravenhats && cp .env.example .env
-# Editar .env con las credenciales reales
-
-# Build
-npm install && npm run build
-
-# Nginx
-cp nginx.conf /etc/nginx/sites-available/ravenhats
-ln -s /etc/nginx/sites-available/ravenhats /etc/nginx/sites-enabled/
-nginx -t && systemctl reload nginx
-
-# SSL
-certbot --nginx -d tu-dominio.com -d www.tu-dominio.com
-
-# PM2
-pm2 start ecosystem.config.js
-pm2 save && pm2 startup
-```
-
----
-
-## Scripts de base de datos
-
-```bash
-# Backup completo
-mysqldump -u TU_USUARIO -p --no-tablespaces \
-  --routines --triggers --single-transaction \
-  TU_BASE_DE_DATOS > backup.sql
-
-# Restaurar
-mysql -u TU_USUARIO -p TU_BASE_DE_DATOS < backup.sql
-```
+Todas las credenciales van en un archivo `.env` local que nunca debe subirse al repositorio.
 
 ---
 
