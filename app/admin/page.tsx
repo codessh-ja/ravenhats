@@ -194,12 +194,23 @@ export default function AdminDashboard() {
   }
 
   const GrowthIndicator = ({ value, suffix = 'vs anterior' }: { value: number; suffix?: string }) => {
-    if (value === 0) return null
+    if (value === 0) return (
+      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+        <span className="inline-flex items-center gap-0.5 font-semibold px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground">— 0%</span>
+        <span className="font-normal">{suffix}</span>
+      </span>
+    )
     const isPositive = value >= 0
     return (
-      <span className={`inline-flex items-center gap-1 text-xs font-medium ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
-        {isPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-        {isPositive ? '+' : ''}{value.toFixed(1)}%
+      <span className="inline-flex items-center gap-1.5 text-xs">
+        <span className={`inline-flex items-center gap-0.5 font-semibold px-1.5 py-0.5 rounded-full ${
+          isPositive
+            ? 'text-green-700 bg-green-100 dark:bg-green-500/15 dark:text-green-400'
+            : 'text-red-700 bg-red-100 dark:bg-red-500/15 dark:text-red-400'
+        }`}>
+          {isPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+          {isPositive ? '+' : ''}{value.toFixed(1)}%
+        </span>
         <span className="text-muted-foreground font-normal">{suffix}</span>
       </span>
     )
@@ -337,89 +348,75 @@ export default function AdminDashboard() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="admin-card overflow-hidden">
+        <Card className="admin-card">
           <CardContent className="p-5">
-            <div className="flex items-start justify-between">
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Ventas Totales</p>
-                <p className="text-2xl font-bold tracking-tight">{formatPrice(stats.totalSales)}</p>
-              </div>
-              <div className="h-10 w-10 rounded-xl bg-green-500/10 flex items-center justify-center">
-                <DollarSign className="h-5 w-5 text-green-500" />
-              </div>
+            <div className="flex items-center gap-2 mb-2">
+              <DollarSign className="h-3.5 w-3.5 text-green-500" />
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ventas totales</p>
             </div>
-            <div className="mt-3 pt-3 border-t border-border">
+            <p className="text-3xl font-bold tracking-tight tabular-nums">{formatPrice(stats.totalSales)}</p>
+            <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1">
               <GrowthIndicator value={stats.salesGrowth} />
-              {stats.physicalSales > 0 && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Online: {formatPrice(stats.onlineSales)} | Fisico: {formatPrice(stats.physicalSales)}
-                </p>
-              )}
             </div>
+            {stats.physicalSales > 0 && (
+              <p className="text-[11px] text-muted-foreground mt-1.5">
+                Online {formatPrice(stats.onlineSales)} · Fisico {formatPrice(stats.physicalSales)}
+              </p>
+            )}
           </CardContent>
         </Card>
 
-        <Card className="admin-card overflow-hidden">
+        <Card className="admin-card">
           <CardContent className="p-5">
-            <div className="flex items-start justify-between">
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Pedidos Pagados</p>
-                <p className="text-2xl font-bold tracking-tight">{stats.totalOrders}</p>
-              </div>
-              <div className="h-10 w-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                <ShoppingCart className="h-5 w-5 text-blue-500" />
-              </div>
+            <div className="flex items-center gap-2 mb-2">
+              <ShoppingCart className="h-3.5 w-3.5 text-blue-500" />
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pedidos pagados</p>
             </div>
-            <div className="mt-3 pt-3 border-t border-border">
+            <p className="text-3xl font-bold tracking-tight tabular-nums">{stats.totalOrders}</p>
+            <div className="mt-2.5">
               <GrowthIndicator value={stats.ordersGrowth} />
             </div>
+            {stats.pendingOrders > 0 && (
+              <p className="text-[11px] text-amber-500 mt-1.5 font-medium">{stats.pendingOrders} pendiente{stats.pendingOrders > 1 ? 's' : ''}</p>
+            )}
           </CardContent>
         </Card>
 
-        <Card className="admin-card overflow-hidden">
+        <Card className="admin-card">
           <CardContent className="p-5">
-            <div className="flex items-start justify-between">
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Tasa Conversion</p>
-                <p className="text-2xl font-bold tracking-tight">{stats.conversionRate.toFixed(1)}%</p>
-              </div>
-              <div className="h-10 w-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
-                <Percent className="h-5 w-5 text-purple-500" />
-              </div>
+            <div className="flex items-center gap-2 mb-2">
+              <Percent className="h-3.5 w-3.5 text-purple-500" />
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tasa conversion</p>
             </div>
-            <div className="mt-3 pt-3 border-t border-border">
-              <p className="text-xs text-muted-foreground">Pedidos pagados vs creados</p>
+            <p className="text-3xl font-bold tracking-tight tabular-nums">{stats.conversionRate.toFixed(1)}%</p>
+            <div className="mt-2.5 h-1.5 rounded-full bg-secondary overflow-hidden">
+              <div className="h-full rounded-full bg-purple-500/60 transition-all" style={{ width: `${Math.min(stats.conversionRate, 100)}%` }} />
             </div>
+            <p className="text-[11px] text-muted-foreground mt-1.5">Pedidos pagados vs creados</p>
           </CardContent>
         </Card>
 
-        <Card className="admin-card overflow-hidden">
+        <Card className="admin-card">
           <CardContent className="p-5">
-            <div className="flex items-start justify-between">
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Productos</p>
-                <p className="text-2xl font-bold tracking-tight">{stats.totalProducts}</p>
-              </div>
-              <div className="h-10 w-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
-                <Package className="h-5 w-5 text-orange-500" />
-              </div>
+            <div className="flex items-center gap-2 mb-2">
+              <Package className="h-3.5 w-3.5 text-orange-500" />
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Productos</p>
             </div>
-            <div className="mt-3 pt-3 border-t border-border">
-              <div className="flex items-center gap-2 text-xs">
-                {stats.stockAlertsEnabled && stats.lowStockCount > 0 && (
-                  <Badge variant="outline" className="bg-amber-500/10 text-amber-500 border-amber-500/20 text-[10px] px-1.5">
-                    {stats.lowStockCount} bajo
-                  </Badge>
-                )}
-                {stats.stockAlertsEnabled && stats.outOfStockCount > 0 && (
-                  <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/20 text-[10px] px-1.5">
-                    {stats.outOfStockCount} agotado
-                  </Badge>
-                )}
-                {(!stats.stockAlertsEnabled || (stats.lowStockCount === 0 && stats.outOfStockCount === 0)) && (
-                  <span className="text-muted-foreground">Activos en catalogo</span>
-                )}
-              </div>
+            <p className="text-3xl font-bold tracking-tight tabular-nums">{stats.totalProducts}</p>
+            <div className="mt-2.5 flex items-center gap-2 flex-wrap">
+              {stats.stockAlertsEnabled && stats.lowStockCount > 0 && (
+                <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold px-1.5 py-0.5 rounded-full text-amber-700 bg-amber-100 dark:bg-amber-500/15 dark:text-amber-400">
+                  {stats.lowStockCount} stock bajo
+                </span>
+              )}
+              {stats.stockAlertsEnabled && stats.outOfStockCount > 0 && (
+                <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold px-1.5 py-0.5 rounded-full text-red-700 bg-red-100 dark:bg-red-500/15 dark:text-red-400">
+                  {stats.outOfStockCount} agotado
+                </span>
+              )}
+              {(!stats.stockAlertsEnabled || (stats.lowStockCount === 0 && stats.outOfStockCount === 0)) && (
+                <p className="text-[11px] text-muted-foreground">Activos en catalogo</p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -464,7 +461,7 @@ export default function AdminDashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <div className="space-y-1">
               {stats.topProducts.length === 0 ? (
                 <div className="text-center py-8">
                   <div className="h-12 w-12 rounded-xl bg-secondary flex items-center justify-center mx-auto mb-3">
@@ -472,20 +469,25 @@ export default function AdminDashboard() {
                   </div>
                   <p className="text-muted-foreground text-sm">Sin ventas aun</p>
                 </div>
-              ) : (
-                stats.topProducts.map((product, index) => (
-                  <div key={index} className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-secondary/50 transition-colors">
-                    <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center text-xs font-bold shrink-0">
-                      #{index + 1}
+              ) : (() => {
+                const maxRev = Math.max(...stats.topProducts.map(p => Number(p.revenue)))
+                return stats.topProducts.map((product, index) => {
+                  const pct = maxRev > 0 ? (Number(product.revenue) / maxRev) * 100 : 0
+                  return (
+                    <div key={index} className="relative group rounded-lg overflow-hidden">
+                      <div className="absolute inset-y-0 left-0 bg-secondary/60 transition-all rounded-lg" style={{ width: `${pct}%` }} />
+                      <div className="relative flex items-center gap-3 px-2 py-2.5">
+                        <span className="text-xs font-bold text-muted-foreground w-4 tabular-nums shrink-0">{index + 1}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">{product.name}</p>
+                          <p className="text-xs text-muted-foreground">{product.sold} uds</p>
+                        </div>
+                        <span className="font-semibold text-sm tabular-nums shrink-0">{formatPrice(product.revenue)}</span>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{product.name}</p>
-                      <p className="text-xs text-muted-foreground">{product.sold} vendidos</p>
-                    </div>
-                    <span className="font-semibold text-sm tabular-nums">{formatPrice(product.revenue)}</span>
-                  </div>
-                ))
-              )}
+                  )
+                })
+              })()}
             </div>
           </CardContent>
         </Card>
@@ -502,32 +504,32 @@ export default function AdminDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {stats.paymentMethodStats.length === 0 ? (
                 <p className="text-muted-foreground text-center py-6 text-sm">Sin datos</p>
-              ) : (
-                stats.paymentMethodStats.map((pm, i) => {
-                  const totalRev = stats.paymentMethodStats.reduce((a, b) => a + Number(b.revenue), 0)
+              ) : (() => {
+                const totalRev = stats.paymentMethodStats.reduce((a, b) => a + Number(b.revenue), 0)
+                return stats.paymentMethodStats.map((pm, i) => {
                   const pct = totalRev > 0 ? (Number(pm.revenue) / totalRev) * 100 : 0
                   return (
-                    <div key={i} className="space-y-2">
+                    <div key={i} className="space-y-1.5">
                       <div className="flex items-center justify-between text-sm">
                         <span className="font-medium">{paymentMethodLabel(pm.method)}</span>
-                        <span className="font-semibold tabular-nums">{formatPrice(pm.revenue)}</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-foreground transition-all progress-animated"
-                            style={{ width: `${pct}%` }}
-                          />
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-[11px] text-muted-foreground tabular-nums">{pm.orders} ped.</span>
+                          <span className="font-semibold tabular-nums">{formatPrice(pm.revenue)}</span>
                         </div>
-                        <span className="text-[10px] text-muted-foreground w-12 text-right tabular-nums">{pm.orders} ord.</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
+                          <div className="h-full rounded-full bg-foreground/60 transition-all" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-[10px] text-muted-foreground w-8 text-right tabular-nums">{pct.toFixed(0)}%</span>
                       </div>
                     </div>
                   )
                 })
-              )}
+              })()}
             </div>
           </CardContent>
         </Card>
@@ -541,23 +543,32 @@ export default function AdminDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {stats.cityStats.length === 0 ? (
                 <p className="text-muted-foreground text-center py-6 text-sm">Sin datos</p>
-              ) : (
-                stats.cityStats.slice(0, 5).map((city, i) => (
-                  <div key={i} className="flex items-center justify-between py-2 px-2 -mx-2 rounded-lg hover:bg-secondary/50 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-muted-foreground w-4 tabular-nums">{i + 1}</span>
-                      <span className="font-medium text-sm">{city.city || 'Sin ciudad'}</span>
+              ) : (() => {
+                const maxRev = Math.max(...stats.cityStats.slice(0, 5).map(c => Number(c.revenue)))
+                return stats.cityStats.slice(0, 5).map((city, i) => {
+                  const pct = maxRev > 0 ? (Number(city.revenue) / maxRev) * 100 : 0
+                  return (
+                    <div key={i} className="space-y-1.5">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-muted-foreground w-4 tabular-nums">{i + 1}</span>
+                          <span className="font-medium">{city.city || 'Sin ciudad'}</span>
+                        </div>
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-[11px] text-muted-foreground tabular-nums">{city.orders} ped.</span>
+                          <span className="font-semibold tabular-nums">{formatPrice(city.revenue)}</span>
+                        </div>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+                        <div className="h-full rounded-full bg-blue-500/50 transition-all" style={{ width: `${pct}%` }} />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <Badge variant="secondary" className="text-[10px] font-normal tabular-nums">{city.orders}</Badge>
-                      <span className="font-semibold text-sm w-20 text-right tabular-nums">{formatPrice(city.revenue)}</span>
-                    </div>
-                  </div>
-                ))
-              )}
+                  )
+                })
+              })()}
             </div>
           </CardContent>
         </Card>
@@ -574,19 +585,26 @@ export default function AdminDashboard() {
             <div className="space-y-3">
               {stats.categoryStats.length === 0 ? (
                 <p className="text-muted-foreground text-center py-6 text-sm">Sin datos</p>
-              ) : (
-                stats.categoryStats.map((cat, i) => (
-                  <div key={i} className="py-2 px-2 -mx-2 rounded-lg hover:bg-secondary/50 transition-colors">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium">{cat.category}</span>
-                      <span className="font-semibold tabular-nums">{formatPrice(cat.revenue)}</span>
+              ) : (() => {
+                const maxRev = Math.max(...stats.categoryStats.map(c => Number(c.revenue)))
+                return stats.categoryStats.map((cat, i) => {
+                  const pct = maxRev > 0 ? (Number(cat.revenue) / maxRev) * 100 : 0
+                  return (
+                    <div key={i} className="space-y-1.5">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium">{cat.category}</span>
+                        <span className="font-semibold tabular-nums">{formatPrice(cat.revenue)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
+                          <div className="h-full rounded-full bg-indigo-500/50 transition-all" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-[10px] text-muted-foreground tabular-nums w-12 text-right">{cat.units} uds</span>
+                      </div>
                     </div>
-                    <p className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">
-                      {cat.units} uds · {cat.orders} pedidos
-                    </p>
-                  </div>
-                ))
-              )}
+                  )
+                })
+              })()}
             </div>
           </CardContent>
         </Card>

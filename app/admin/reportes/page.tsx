@@ -54,12 +54,24 @@ const PAYMENT_LABELS: Record<string, string> = {
 }
 
 function GrowthIndicator({ value }: { value: number }) {
-  if (value === 0) return <span className="text-xs text-muted-foreground">Sin cambio</span>
+  if (value === 0) return (
+    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+      <span className="inline-flex items-center gap-0.5 font-semibold px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground">— 0%</span>
+      <span>vs anterior</span>
+    </span>
+  )
   const pos = value > 0
   return (
-    <span className={`inline-flex items-center gap-0.5 text-xs font-medium ${pos ? 'text-green-500' : 'text-red-500'}`}>
-      {pos ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-      {pos ? '+' : ''}{value.toFixed(1)}% vs anterior
+    <span className="inline-flex items-center gap-1.5 text-xs">
+      <span className={`inline-flex items-center gap-0.5 font-semibold px-1.5 py-0.5 rounded-full ${
+        pos
+          ? 'text-green-700 bg-green-100 dark:bg-green-500/15 dark:text-green-400'
+          : 'text-red-700 bg-red-100 dark:bg-red-500/15 dark:text-red-400'
+      }`}>
+        {pos ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+        {pos ? '+' : ''}{value.toFixed(1)}%
+      </span>
+      <span className="text-muted-foreground">vs anterior</span>
     </span>
   )
 }
@@ -183,47 +195,46 @@ export default function ReportesPage() {
       <div className="space-y-3">
         <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
           <Card className="admin-card">
-            <CardContent className="pt-5 pb-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1">Total ingresos</p>
-                  <div className="text-2xl font-bold text-green-500">{formatPrice(stats.totalSales)}</div>
-                  <div className="mt-1"><GrowthIndicator value={stats.salesGrowth} /></div>
-                </div>
-                <div className="h-9 w-9 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
-                  <DollarSign className="h-4 w-4 text-green-500" />
-                </div>
+            <CardContent className="p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <DollarSign className="h-3.5 w-3.5 text-green-500" />
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total ingresos</p>
               </div>
+              <p className="text-3xl font-bold tracking-tight tabular-nums text-green-500">{formatPrice(stats.totalSales)}</p>
+              <div className="mt-2.5"><GrowthIndicator value={stats.salesGrowth} /></div>
+              {stats.physicalSales > 0 && (
+                <p className="text-[11px] text-muted-foreground mt-1.5">
+                  Online {formatPrice(stats.onlineSales)} · Físico {formatPrice(stats.physicalSales)}
+                </p>
+              )}
             </CardContent>
           </Card>
 
           <Card className="admin-card">
-            <CardContent className="pt-5 pb-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1">Ventas online</p>
-                  <div className="text-2xl font-bold text-blue-500">{formatPrice(stats.onlineSales)}</div>
-                  <p className="text-xs text-muted-foreground mt-1">{stats.totalOrders} pedidos pagados</p>
-                </div>
-                <div className="h-9 w-9 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
-                  <ShoppingCart className="h-4 w-4 text-blue-500" />
-                </div>
+            <CardContent className="p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <ShoppingCart className="h-3.5 w-3.5 text-blue-500" />
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ventas online</p>
               </div>
+              <p className="text-3xl font-bold tracking-tight tabular-nums text-blue-500">{formatPrice(stats.onlineSales)}</p>
+              <div className="mt-2.5 h-1.5 rounded-full bg-secondary overflow-hidden">
+                <div className="h-full rounded-full bg-blue-500/50 transition-all" style={{ width: `${stats.totalSales > 0 ? (stats.onlineSales / stats.totalSales) * 100 : 0}%` }} />
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1.5">{stats.totalOrders} pedidos pagados</p>
             </CardContent>
           </Card>
 
           <Card className="admin-card">
-            <CardContent className="pt-5 pb-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1">Ventas físicas</p>
-                  <div className="text-2xl font-bold text-purple-500">{formatPrice(stats.physicalSales)}</div>
-                  <p className="text-xs text-muted-foreground mt-1">{stats.physicalSalesCount} ventas registradas</p>
-                </div>
-                <div className="h-9 w-9 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0">
-                  <Store className="h-4 w-4 text-purple-500" />
-                </div>
+            <CardContent className="p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <Store className="h-3.5 w-3.5 text-purple-500" />
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ventas físicas</p>
               </div>
+              <p className="text-3xl font-bold tracking-tight tabular-nums text-purple-500">{formatPrice(stats.physicalSales)}</p>
+              <div className="mt-2.5 h-1.5 rounded-full bg-secondary overflow-hidden">
+                <div className="h-full rounded-full bg-purple-500/50 transition-all" style={{ width: `${stats.totalSales > 0 ? (stats.physicalSales / stats.totalSales) * 100 : 0}%` }} />
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1.5">{stats.physicalSalesCount} ventas registradas</p>
             </CardContent>
           </Card>
         </div>
