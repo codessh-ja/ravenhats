@@ -430,47 +430,38 @@ export default function AdminProductsPage() {
       <div className="space-y-3">
         <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
           <Card className="admin-card">
-            <CardContent className="pt-5 pb-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1">Total productos</p>
-                  <div className="text-2xl font-bold">{products.length}</div>
-                  <p className="text-xs text-muted-foreground mt-1">{activeCount} activos en catálogo</p>
-                </div>
-                <div className="h-9 w-9 rounded-lg bg-foreground/5 flex items-center justify-center shrink-0">
-                  <Package className="h-4 w-4 text-muted-foreground" />
-                </div>
+            <CardContent className="p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total productos</p>
               </div>
+              <p className="text-3xl font-bold tracking-tight tabular-nums">{products.length}</p>
+              <p className="text-[11px] text-muted-foreground mt-2">{activeCount} activos · {featuredCount} destacados</p>
             </CardContent>
           </Card>
 
           <Card className="admin-card">
-            <CardContent className="pt-5 pb-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1">Activos</p>
-                  <div className="text-2xl font-bold text-green-500">{activeCount}</div>
-                  <p className="text-xs text-muted-foreground mt-1">{featuredCount} destacados</p>
-                </div>
-                <div className="h-9 w-9 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
-                  <Check className="h-4 w-4 text-green-500" />
-                </div>
+            <CardContent className="p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <Check className="h-3.5 w-3.5 text-green-500" />
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Activos</p>
               </div>
+              <p className="text-3xl font-bold tracking-tight tabular-nums text-green-500">{activeCount}</p>
+              <div className="mt-2.5 h-1.5 rounded-full bg-secondary overflow-hidden">
+                <div className="h-full rounded-full bg-green-500/50 transition-all" style={{ width: `${products.length > 0 ? (activeCount / products.length) * 100 : 0}%` }} />
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1">{products.length > 0 ? ((activeCount / products.length) * 100).toFixed(0) : 0}% del catálogo</p>
             </CardContent>
           </Card>
 
           <Card className="admin-card">
-            <CardContent className="pt-5 pb-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1">Valor inventario</p>
-                  <div className="text-2xl font-bold">{formatPrice(totalValue)}</div>
-                  <p className="text-xs text-muted-foreground mt-1">Precio × stock actual</p>
-                </div>
-                <div className="h-9 w-9 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
-                  <DollarSign className="h-4 w-4 text-blue-500" />
-                </div>
+            <CardContent className="p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <DollarSign className="h-3.5 w-3.5 text-blue-500" />
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Valor inventario</p>
               </div>
+              <p className="text-3xl font-bold tracking-tight tabular-nums">{formatPrice(totalValue)}</p>
+              <p className="text-[11px] text-muted-foreground mt-2">Precio × stock actual</p>
             </CardContent>
           </Card>
         </div>

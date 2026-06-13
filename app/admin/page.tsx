@@ -12,10 +12,10 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
-  DollarSign, ShoppingCart, Package, Users, Loader2, Clock,
+  DollarSign, ShoppingCart, Package, Loader2, Clock,
   AlertTriangle, BarChart3, MapPin, CreditCard, Percent, Calendar, X, Download,
-  ArrowUpRight, ArrowDownRight, RefreshCw, Receipt, Plus, Eye, TrendingUp,
-  ChevronRight, Zap
+  ArrowUpRight, ArrowDownRight, RefreshCw, TrendingUp,
+  ChevronRight
 } from 'lucide-react'
 import { formatPrice } from '@/lib/data'
 import { SalesChart } from '@/components/admin/sales-chart'
@@ -304,46 +304,6 @@ export default function AdminDashboard() {
             )}
           </div>
         )}
-      </div>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Link href="/admin/productos" className="quick-action group">
-          <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0 group-hover:bg-green-500/20 transition-colors">
-            <Plus className="h-5 w-5 text-green-500" />
-          </div>
-          <div className="min-w-0">
-            <p className="font-medium text-sm">Nuevo producto</p>
-            <p className="text-xs text-muted-foreground truncate">Agregar al catalogo</p>
-          </div>
-        </Link>
-        <Link href="/admin/pedidos" className="quick-action group">
-          <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0 group-hover:bg-blue-500/20 transition-colors">
-            <Eye className="h-5 w-5 text-blue-500" />
-          </div>
-          <div className="min-w-0">
-            <p className="font-medium text-sm">Ver pedidos</p>
-            <p className="text-xs text-muted-foreground truncate">{stats.pendingOrders} pendientes</p>
-          </div>
-        </Link>
-        <Link href="/admin/clientes" className="quick-action group">
-          <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0 group-hover:bg-purple-500/20 transition-colors">
-            <Users className="h-5 w-5 text-purple-500" />
-          </div>
-          <div className="min-w-0">
-            <p className="font-medium text-sm">Clientes</p>
-            <p className="text-xs text-muted-foreground truncate">{stats.totalCustomers} registrados</p>
-          </div>
-        </Link>
-        <Link href="/admin/reportes" className="quick-action group">
-          <div className="h-10 w-10 rounded-lg bg-orange-500/10 flex items-center justify-center shrink-0 group-hover:bg-orange-500/20 transition-colors">
-            <BarChart3 className="h-5 w-5 text-orange-500" />
-          </div>
-          <div className="min-w-0">
-            <p className="font-medium text-sm">Reportes</p>
-            <p className="text-xs text-muted-foreground truncate">Analisis detallado</p>
-          </div>
-        </Link>
       </div>
 
       {/* Stats Cards */}

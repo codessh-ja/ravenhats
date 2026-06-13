@@ -347,47 +347,35 @@ export default function ClientesPage() {
       <div className="space-y-3">
         <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
           <Card className="admin-card">
-            <CardContent className="pt-5 pb-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1">Total clientes</p>
-                  <div className="text-2xl font-bold tabular-nums">{stats?.total_customers || 0}</div>
-                  <p className="text-xs text-muted-foreground mt-1">Clientes únicos</p>
-                </div>
-                <div className="h-9 w-9 rounded-lg bg-foreground/5 flex items-center justify-center shrink-0">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </div>
+            <CardContent className="p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total clientes</p>
               </div>
+              <p className="text-3xl font-bold tracking-tight tabular-nums">{stats?.total_customers || 0}</p>
+              <p className="text-[11px] text-muted-foreground mt-2">Clientes únicos registrados</p>
             </CardContent>
           </Card>
 
           <Card className="admin-card">
-            <CardContent className="pt-5 pb-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1">Ingresos</p>
-                  <div className="text-2xl font-bold text-green-500 tabular-nums">{formatPrice(stats?.total_revenue || 0)}</div>
-                  <p className="text-xs text-muted-foreground mt-1">{stats?.total_orders || 0} pedidos pagados</p>
-                </div>
-                <div className="h-9 w-9 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
-                  <DollarSign className="h-4 w-4 text-green-500" />
-                </div>
+            <CardContent className="p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <DollarSign className="h-3.5 w-3.5 text-green-500" />
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ingresos</p>
               </div>
+              <p className="text-3xl font-bold tracking-tight tabular-nums text-green-500">{formatPrice(stats?.total_revenue || 0)}</p>
+              <p className="text-[11px] text-muted-foreground mt-2">{stats?.total_orders || 0} pedidos pagados</p>
             </CardContent>
           </Card>
 
           <Card className="admin-card">
-            <CardContent className="pt-5 pb-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1">Ticket promedio</p>
-                  <div className="text-2xl font-bold tabular-nums">{formatPrice(stats?.avg_order_value || 0)}</div>
-                  <p className="text-xs text-muted-foreground mt-1">Por pedido pagado</p>
-                </div>
-                <div className="h-9 w-9 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
-                  <TrendingUp className="h-4 w-4 text-blue-500" />
-                </div>
+            <CardContent className="p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="h-3.5 w-3.5 text-blue-500" />
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ticket promedio</p>
               </div>
+              <p className="text-3xl font-bold tracking-tight tabular-nums">{formatPrice(stats?.avg_order_value || 0)}</p>
+              <p className="text-[11px] text-muted-foreground mt-2">Por pedido pagado</p>
             </CardContent>
           </Card>
         </div>
@@ -468,19 +456,16 @@ export default function ClientesPage() {
           </Card>
 
           {/* Desktop Table */}
-          <Card className="hidden md:block">
+          <Card className="hidden md:block admin-card overflow-hidden">
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Cliente</TableHead>
-                    <TableHead>Contacto</TableHead>
-                    <TableHead>Ubicacion</TableHead>
                     <TableHead className="text-center">Pedidos</TableHead>
-                    <TableHead className="text-center">Segmento</TableHead>
                     <TableHead className="text-right cursor-pointer" onClick={() => toggleSort('total_spent')}>
                       <span className="flex items-center justify-end gap-1">
-                        Total Gastado
+                        Total gastado
                         <ArrowUpDown className="h-3 w-3" />
                       </span>
                     </TableHead>
@@ -490,7 +475,7 @@ export default function ClientesPage() {
                 <TableBody>
                   {filteredAndSortedCustomers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                         No se encontraron clientes
                       </TableCell>
                     </TableRow>
@@ -501,85 +486,62 @@ export default function ClientesPage() {
                         <TableRow key={`${customer.is_manual ? 'm' : 'o'}-${customer.id}`}>
                           <TableCell>
                             <div className="flex items-center gap-3">
-                              <Avatar className="h-9 w-9">
+                              <Avatar className="h-8 w-8 shrink-0">
                                 <AvatarFallback className="text-xs">
                                   {customer.first_name?.[0]}{customer.last_name?.[0]}
                                 </AvatarFallback>
                               </Avatar>
-                              <div>
-                                <div className="flex items-center gap-1.5">
-                                  <p className="font-medium">{customer.first_name} {customer.last_name}</p>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <p className="font-medium text-sm">{customer.first_name} {customer.last_name}</p>
+                                  <Badge variant="outline" className={`text-[9px] px-1.5 ${tier.color}`}>{tier.label}</Badge>
                                   {customer.is_manual && (
                                     <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-purple-500/10 text-purple-500 border-purple-500/20">Manual</Badge>
                                   )}
                                 </div>
-                                <p className="text-xs text-muted-foreground">
-                                  {customer.is_manual ? 'Registrado' : 'Desde'} {new Date(customer.first_order_date).toLocaleDateString('es-CO', { month: 'short', year: 'numeric' })}
-                                </p>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  {customer.email && <p className="text-xs text-muted-foreground truncate max-w-[180px]">{customer.email}</p>}
+                                  {customer.city && <p className="text-xs text-muted-foreground shrink-0">· {customer.city}</p>}
+                                </div>
                               </div>
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="space-y-1">
-                              {customer.email && (
-                                <div className="flex items-center gap-2 text-sm">
-                                  <Mail className="h-3 w-3 text-muted-foreground" />
-                                  <span className="truncate max-w-[150px]">{customer.email}</span>
-                                </div>
-                              )}
-                              {customer.phone && (
-                                <div className="flex items-center gap-2 text-sm">
-                                  <Phone className="h-3 w-3 text-muted-foreground" />
-                                  {customer.phone}
-                                </div>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {customer.city ? (
-                              <div className="flex items-center gap-2 text-sm">
-                                <MapPin className="h-3 w-3 text-muted-foreground" />
-                                {customer.city}{customer.department ? `, ${customer.department}` : ''}
-                              </div>
-                            ) : <span className="text-muted-foreground text-sm">-</span>}
                           </TableCell>
                           <TableCell className="text-center">
                             {customer.is_manual ? (
-                              <span className="text-xs text-muted-foreground">Sin pedidos</span>
+                              <span className="text-xs text-muted-foreground">—</span>
                             ) : (
-                              <div className="flex flex-col items-center gap-1">
-                                <Badge variant="secondary">{customer.paid_orders} pagados</Badge>
+                              <div className="flex flex-col items-center gap-0.5">
+                                <span className="text-sm font-semibold">{customer.paid_orders}</span>
                                 {customer.pending_orders > 0 && (
-                                  <Badge className="bg-yellow-500/10 text-yellow-600 text-xs">{customer.pending_orders} pend.</Badge>
+                                  <span className="text-[10px] text-amber-500">{customer.pending_orders} pend.</span>
                                 )}
                               </div>
                             )}
                           </TableCell>
-                          <TableCell className="text-center">
-                            <Badge variant="outline" className={tier.color}>{tier.label}</Badge>
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {customer.is_manual ? <span className="text-muted-foreground text-sm">—</span> : formatPrice(customer.total_spent || 0)}
+                          <TableCell className="text-right">
+                            <span className="font-semibold text-sm tabular-nums">
+                              {customer.is_manual ? <span className="text-muted-foreground">—</span> : formatPrice(customer.total_spent || 0)}
+                            </span>
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
-                              <Button variant="ghost" size="sm" onClick={() => viewCustomerDetails(customer)}>
-                                <Eye className="h-4 w-4" />
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => viewCustomerDetails(customer)}>
+                                <Eye className="h-3.5 w-3.5" />
                               </Button>
                               {customer.phone && (
-                                <Button variant="ghost" size="sm" onClick={() => {
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => {
                                   window.open(`https://wa.me/57${customer.phone?.replace(/\D/g, '')}`, '_blank')
                                 }}>
-                                  <MessageCircle className="h-4 w-4" />
+                                  <MessageCircle className="h-3.5 w-3.5" />
                                 </Button>
                               )}
                               {customer.is_manual && (
                                 <>
-                                  <Button variant="ghost" size="sm" onClick={() => openEditCustomer(customer)}>
-                                    <Pencil className="h-4 w-4" />
+                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openEditCustomer(customer)}>
+                                    <Pencil className="h-3.5 w-3.5" />
                                   </Button>
-                                  <Button variant="ghost" size="sm" className="text-red-500 hover:bg-red-500/10" onClick={() => deleteManualCustomer(customer.id)} disabled={deletingCustomerId === customer.id}>
-                                    {deletingCustomerId === customer.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500 hover:bg-red-500/10" onClick={() => deleteManualCustomer(customer.id)} disabled={deletingCustomerId === customer.id}>
+                                    {deletingCustomerId === customer.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                                   </Button>
                                 </>
                               )}
