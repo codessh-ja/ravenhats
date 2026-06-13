@@ -15,7 +15,7 @@ import {
   DollarSign, ShoppingCart, Package, Loader2, Clock,
   AlertTriangle, BarChart3, MapPin, CreditCard, Percent, Calendar, X, Download,
   ArrowUpRight, ArrowDownRight, RefreshCw, TrendingUp,
-  ChevronRight
+  ChevronRight, Zap, Receipt
 } from 'lucide-react'
 import { formatPrice } from '@/lib/data'
 import { SalesChart } from '@/components/admin/sales-chart'
