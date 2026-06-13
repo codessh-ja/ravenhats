@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
-import { 
-  Plus, Search, MoreHorizontal, Pencil, Trash2, X, Link as LinkIcon, Check, Loader2, Copy, 
-  Package, AlertTriangle, Filter, ChevronDown, Eye, Settings2, Download, RefreshCw, Tag
+import {
+  Plus, Search, MoreHorizontal, Pencil, Trash2, X, Link as LinkIcon, Check, Loader2, Copy,
+  Package, AlertTriangle, Filter, ChevronDown, Eye, Settings2, Download, RefreshCw, Tag, DollarSign
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -426,83 +426,89 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-        <Card className="admin-card">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Total</p>
-                <p className="text-xl font-bold mt-0.5">{products.length}</p>
+      {/* Stats */}
+      <div className="space-y-3">
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+          <Card className="admin-card">
+            <CardContent className="pt-5 pb-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1">Total productos</p>
+                  <div className="text-2xl font-bold">{products.length}</div>
+                  <p className="text-xs text-muted-foreground mt-1">{activeCount} activos en catálogo</p>
+                </div>
+                <div className="h-9 w-9 rounded-lg bg-foreground/5 flex items-center justify-center shrink-0">
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                </div>
               </div>
-              <div className="h-9 w-9 rounded-lg bg-foreground/5 flex items-center justify-center">
-                <Package className="h-4 w-4 text-muted-foreground" />
+            </CardContent>
+          </Card>
+
+          <Card className="admin-card">
+            <CardContent className="pt-5 pb-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1">Activos</p>
+                  <div className="text-2xl font-bold text-green-500">{activeCount}</div>
+                  <p className="text-xs text-muted-foreground mt-1">{featuredCount} destacados</p>
+                </div>
+                <div className="h-9 w-9 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
+                  <Check className="h-4 w-4 text-green-500" />
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="admin-card">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Activos</p>
-                <p className="text-xl font-bold mt-0.5 text-green-500">{activeCount}</p>
+            </CardContent>
+          </Card>
+
+          <Card className="admin-card">
+            <CardContent className="pt-5 pb-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1">Valor inventario</p>
+                  <div className="text-2xl font-bold">{formatPrice(totalValue)}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Precio × stock actual</p>
+                </div>
+                <div className="h-9 w-9 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+                  <DollarSign className="h-4 w-4 text-blue-500" />
+                </div>
               </div>
-              <div className="h-9 w-9 rounded-lg bg-green-500/10 flex items-center justify-center">
-                <Check className="h-4 w-4 text-green-500" />
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid gap-3 grid-cols-3">
+          <Card className={`admin-card ${lowStock > 0 ? 'border-amber-500/25' : ''}`}>
+            <CardContent className="pt-4 pb-3">
+              <div className="flex items-center gap-2 mb-1">
+                <AlertTriangle className={`h-3.5 w-3.5 ${lowStock > 0 ? 'text-amber-500' : 'text-muted-foreground'}`} />
+                <p className="text-xs text-muted-foreground">Stock bajo</p>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="admin-card">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Valor Inv.</p>
-                <p className="text-lg font-bold mt-0.5">{formatPrice(totalValue)}</p>
+              <p className={`text-base font-bold ${lowStock > 0 ? 'text-amber-500' : ''}`}>{lowStock}</p>
+              <p className="text-[11px] text-muted-foreground">productos</p>
+            </CardContent>
+          </Card>
+
+          <Card className={`admin-card ${outOfStock > 0 ? 'border-red-500/25' : ''}`}>
+            <CardContent className="pt-4 pb-3">
+              <div className="flex items-center gap-2 mb-1">
+                <X className={`h-3.5 w-3.5 ${outOfStock > 0 ? 'text-red-500' : 'text-muted-foreground'}`} />
+                <p className="text-xs text-muted-foreground">Agotados</p>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className={`admin-card ${lowStock > 0 ? 'border-amber-500/30' : ''}`}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Stock Bajo</p>
-                <p className={`text-xl font-bold mt-0.5 ${lowStock > 0 ? 'text-amber-500' : ''}`}>{lowStock}</p>
+              <p className={`text-base font-bold ${outOfStock > 0 ? 'text-red-500' : ''}`}>{outOfStock}</p>
+              <p className="text-[11px] text-muted-foreground">sin stock</p>
+            </CardContent>
+          </Card>
+
+          <Card className="admin-card">
+            <CardContent className="pt-4 pb-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Tag className="h-3.5 w-3.5 text-red-500" />
+                <p className="text-xs text-muted-foreground">En descuentos</p>
               </div>
-              <div className={`h-9 w-9 rounded-lg flex items-center justify-center ${lowStock > 0 ? 'bg-amber-500/10' : 'bg-foreground/5'}`}>
-                <AlertTriangle className={`h-4 w-4 ${lowStock > 0 ? 'text-amber-500' : 'text-muted-foreground'}`} />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className={`admin-card ${outOfStock > 0 ? 'border-red-500/30' : ''}`}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Agotados</p>
-                <p className={`text-xl font-bold mt-0.5 ${outOfStock > 0 ? 'text-red-500' : ''}`}>{outOfStock}</p>
-              </div>
-              <div className={`h-9 w-9 rounded-lg flex items-center justify-center ${outOfStock > 0 ? 'bg-red-500/10' : 'bg-foreground/5'}`}>
-                <X className={`h-4 w-4 ${outOfStock > 0 ? 'text-red-500' : 'text-muted-foreground'}`} />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="admin-card">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Descuentos</p>
-                <p className="text-xl font-bold mt-0.5">{discountCount}</p>
-              </div>
-              <div className="h-9 w-9 rounded-lg bg-red-500/10 flex items-center justify-center">
-                <Tag className="h-4 w-4 text-red-500" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              <p className="text-base font-bold">{discountCount}</p>
+              <p className="text-[11px] text-muted-foreground">en oferta</p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Filters */}

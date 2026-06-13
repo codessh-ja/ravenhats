@@ -343,82 +343,78 @@ export default function ClientesPage() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
-        <Card className="admin-card">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Total Clientes</p>
-                <p className="text-xl font-bold mt-0.5 tabular-nums">{stats?.total_customers || 0}</p>
-                <p className="text-[10px] text-muted-foreground mt-1">clientes unicos</p>
+      {/* Stats */}
+      <div className="space-y-3">
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+          <Card className="admin-card">
+            <CardContent className="pt-5 pb-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1">Total clientes</p>
+                  <div className="text-2xl font-bold tabular-nums">{stats?.total_customers || 0}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Clientes únicos</p>
+                </div>
+                <div className="h-9 w-9 rounded-lg bg-foreground/5 flex items-center justify-center shrink-0">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </div>
               </div>
-              <div className="h-9 w-9 rounded-lg bg-foreground/5 flex items-center justify-center">
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="admin-card">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Ingresos</p>
-                <p className="text-lg font-bold mt-0.5 tabular-nums">{formatPrice(stats?.total_revenue || 0)}</p>
-                <p className="text-[10px] text-muted-foreground mt-1">{stats?.total_orders || 0} pedidos pagados</p>
-              </div>
-              <div className="h-9 w-9 rounded-lg bg-green-500/10 flex items-center justify-center">
-                <DollarSign className="h-4 w-4 text-green-500" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className={`admin-card ${pendingPaymentCustomers.length > 0 ? 'border-yellow-500/30' : ''}`}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Pago Pend.</p>
-                <p className={`text-xl font-bold mt-0.5 tabular-nums ${pendingPaymentCustomers.length > 0 ? 'text-yellow-500' : ''}`}>{stats?.pending_payments || 0}</p>
-                <p className="text-[10px] text-muted-foreground mt-1">{formatPrice(stats?.pending_revenue || 0)} por cobrar</p>
+          <Card className="admin-card">
+            <CardContent className="pt-5 pb-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1">Ingresos</p>
+                  <div className="text-2xl font-bold text-green-500 tabular-nums">{formatPrice(stats?.total_revenue || 0)}</div>
+                  <p className="text-xs text-muted-foreground mt-1">{stats?.total_orders || 0} pedidos pagados</p>
+                </div>
+                <div className="h-9 w-9 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
+                  <DollarSign className="h-4 w-4 text-green-500" />
+                </div>
               </div>
-              <div className={`h-9 w-9 rounded-lg flex items-center justify-center ${pendingPaymentCustomers.length > 0 ? 'bg-yellow-500/10' : 'bg-foreground/5'}`}>
-                <Clock className={`h-4 w-4 ${pendingPaymentCustomers.length > 0 ? 'text-yellow-500' : 'text-muted-foreground'}`} />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="admin-card">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Ticket Prom.</p>
-                <p className="text-lg font-bold mt-0.5 tabular-nums">{formatPrice(stats?.avg_order_value || 0)}</p>
-                <p className="text-[10px] text-muted-foreground mt-1">por pedido</p>
+          <Card className="admin-card">
+            <CardContent className="pt-5 pb-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1">Ticket promedio</p>
+                  <div className="text-2xl font-bold tabular-nums">{formatPrice(stats?.avg_order_value || 0)}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Por pedido pagado</p>
+                </div>
+                <div className="h-9 w-9 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+                  <TrendingUp className="h-4 w-4 text-blue-500" />
+                </div>
               </div>
-              <div className="h-9 w-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                <TrendingUp className="h-4 w-4 text-blue-500" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
 
-        <Card className="admin-card">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Conversion</p>
-                <p className="text-xl font-bold mt-0.5 tabular-nums">{conversionRate.toFixed(1)}%</p>
-                <p className="text-[10px] text-muted-foreground mt-1">pedidos completados</p>
+        <div className="grid gap-3 grid-cols-2">
+          <Card className={`admin-card ${pendingPaymentCustomers.length > 0 ? 'border-yellow-500/25' : ''}`}>
+            <CardContent className="pt-4 pb-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Clock className={`h-3.5 w-3.5 ${pendingPaymentCustomers.length > 0 ? 'text-yellow-500' : 'text-muted-foreground'}`} />
+                <p className="text-xs text-muted-foreground">Pagos pendientes</p>
               </div>
-              <div className="h-9 w-9 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                <TrendingUp className="h-4 w-4 text-purple-500" />
+              <p className={`text-base font-bold tabular-nums ${pendingPaymentCustomers.length > 0 ? 'text-yellow-500' : ''}`}>{stats?.pending_payments || 0}</p>
+              <p className="text-[11px] text-muted-foreground">{formatPrice(stats?.pending_revenue || 0)} por cobrar</p>
+            </CardContent>
+          </Card>
+
+          <Card className="admin-card">
+            <CardContent className="pt-4 pb-3">
+              <div className="flex items-center gap-2 mb-1">
+                <TrendingUp className="h-3.5 w-3.5 text-purple-500" />
+                <p className="text-xs text-muted-foreground">Conversión</p>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+              <p className="text-base font-bold tabular-nums">{conversionRate.toFixed(1)}%</p>
+              <p className="text-[11px] text-muted-foreground">Pedidos completados</p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -438,40 +434,38 @@ export default function ClientesPage() {
 
         {/* All Customers Tab */}
         <TabsContent value="all" className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Card className="flex-1">
-              <CardContent className="pt-4 pb-4">
-                <div className="relative">
+          <Card className="admin-card">
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Buscar por nombre, email o telefono..."
+                    placeholder="Buscar por nombre, email o teléfono..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="pl-10"
+                    className="pl-9 h-9"
                   />
                 </div>
-              </CardContent>
-            </Card>
-            <div className="flex items-center gap-2">
-              <Select value={`${sortField}|${sortDir}`} onValueChange={(v) => {
-                const [f, d] = v.split('|') as [SortField, SortDir]
-                setSortField(f); setSortDir(d)
-              }}>
-                <SelectTrigger className="w-[200px]">
-                  <ArrowUpDown className="mr-2 h-4 w-4" />
-                  <SelectValue placeholder="Ordenar por" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="last_order_date|desc">Mas recientes</SelectItem>
-                  <SelectItem value="last_order_date|asc">Mas antiguos</SelectItem>
-                  <SelectItem value="total_spent|desc">Mayor gasto</SelectItem>
-                  <SelectItem value="total_spent|asc">Menor gasto</SelectItem>
-                  <SelectItem value="paid_orders|desc">Mas pedidos</SelectItem>
-                  <SelectItem value="name|asc">Nombre A-Z</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+                <Select value={`${sortField}|${sortDir}`} onValueChange={(v) => {
+                  const [f, d] = v.split('|') as [SortField, SortDir]
+                  setSortField(f); setSortDir(d)
+                }}>
+                  <SelectTrigger className="w-[200px] h-9">
+                    <ArrowUpDown className="mr-2 h-3.5 w-3.5" />
+                    <SelectValue placeholder="Ordenar por" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="last_order_date|desc">Más recientes</SelectItem>
+                    <SelectItem value="last_order_date|asc">Más antiguos</SelectItem>
+                    <SelectItem value="total_spent|desc">Mayor gasto</SelectItem>
+                    <SelectItem value="total_spent|asc">Menor gasto</SelectItem>
+                    <SelectItem value="paid_orders|desc">Más pedidos</SelectItem>
+                    <SelectItem value="name|asc">Nombre A-Z</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Desktop Table */}
           <Card className="hidden md:block">
