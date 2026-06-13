@@ -41,9 +41,8 @@ const mainNavigation = [
 ]
 
 const analyticsNavigation = [
-  { name: 'Contabilidad', href: '/admin/contabilidad', icon: Receipt,      description: 'Finanzas y pagos',           badgeKey: '' },
-  { name: 'Reportes',     href: '/admin/reportes',     icon: BarChart3,     description: 'Estadisticas detalladas',   badgeKey: '' },
-  { name: 'Chatbot IA',   href: '/admin/chatbot',      icon: MessageCircle, description: 'Analytics del asistente',   badgeKey: '' },
+  { name: 'Contabilidad', href: '/admin/contabilidad', icon: Receipt,   description: 'Finanzas y pagos',         badgeKey: '' },
+  { name: 'Reportes',     href: '/admin/reportes',     icon: BarChart3, description: 'Estadisticas detalladas',  badgeKey: '' },
 ]
 
 const settingsNavigation = [

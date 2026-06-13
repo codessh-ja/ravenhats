@@ -97,16 +97,19 @@ export async function GET(request: NextRequest) {
       WHERE o.payment_status = 'approved' ${prevDateFilter}
     `)
 
+    const physDateFilter = dateFilter.replace(/o\.created_at/g, 'transaction_date')
+    const prevPhysDateFilter = prevDateFilter.replace(/o\.created_at/g, 'transaction_date')
+
     // Physical sales from accounting
     let physicalSalesResult: any[] = [{ physicalTotal: 0, physicalCount: 0 }]
     try {
       physicalSalesResult = await query<any[]>(`
-        SELECT 
+        SELECT
           COALESCE(SUM(total), 0) as physicalTotal,
           COUNT(*) as physicalCount
-        FROM accounting_transactions 
+        FROM accounting_transactions
         WHERE type = 'physical_sale' AND payment_status = 'approved'
-          ${dateFilter.replace(/o\./g, '')}
+          ${physDateFilter}
       `)
     } catch {
       // Table may not exist
@@ -118,7 +121,7 @@ export async function GET(request: NextRequest) {
         SELECT COALESCE(SUM(total), 0) as physicalTotal
         FROM accounting_transactions
         WHERE type = 'physical_sale' AND payment_status = 'approved'
-          ${prevAcctDateFilter}
+          ${prevPhysDateFilter}
       `)
     } catch { /* table may not exist */ }
 
