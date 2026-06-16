@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   Plus, Search, Download, Loader2, Check, Trash2, DollarSign,
   TrendingUp, TrendingDown, ShoppingCart, Store, X,
-  Receipt, CreditCard, Banknote, ArrowUpDown, Eye, Pencil
+  Receipt, CreditCard, Banknote, ArrowUpDown, Eye, Pencil,
+  Calendar, SlidersHorizontal
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,6 +26,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip as RechartsTooltip,
+} from 'recharts'
 import { formatPrice } from '@/lib/data'
 
 interface Transaction {
@@ -81,6 +85,13 @@ interface Toast {
   id: number
   message: string
   type: 'success' | 'error'
+}
+
+interface ChartPoint {
+  month: string
+  label: string
+  ingresos: number
+  egresos: number
 }
 
 const typeLabels: Record<string, string> = {
@@ -143,18 +154,108 @@ function getBogotaDateTimeStr(): string {
   return `${g('year')}-${g('month')}-${g('day')}T${g('hour')}:${g('minute')}`
 }
 
+function FinanceChart({ data, activeTab }: { data: ChartPoint[]; activeTab: 'all' | 'income' | 'expense' }) {
+  if (!data || data.length === 0) {
+    return (
+      <div className="h-[200px] flex items-center justify-center text-muted-foreground text-sm">
+        Sin datos históricos disponibles
+      </div>
+    )
+  }
+  const fmt = (v: number) =>
+    v >= 1_000_000 ? `$${(v / 1_000_000).toFixed(1)}M`
+    : v >= 1_000 ? `$${(v / 1_000).toFixed(0)}K`
+    : `$${v}`
+
+  return (
+    <div className="h-[200px] w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <defs>
+            <linearGradient id="ingresosGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#f97316" stopOpacity={0.18} />
+              <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+            </linearGradient>
+            <linearGradient id="egresosGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#ef4444" stopOpacity={0.18} />
+              <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" opacity={0.08} />
+          <XAxis
+            dataKey="label"
+            fontSize={11}
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            tick={{ fill: 'currentColor', opacity: 0.5 }}
+          />
+          <YAxis
+            fontSize={11}
+            tickLine={false}
+            axisLine={false}
+            tickMargin={4}
+            width={56}
+            tick={{ fill: 'currentColor', opacity: 0.5 }}
+            tickFormatter={fmt}
+          />
+          <RechartsTooltip
+            formatter={(value: number, name: string) => [
+              new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value),
+              name === 'ingresos' ? 'Ingresos' : 'Egresos',
+            ]}
+            contentStyle={{
+              background: 'hsl(var(--card))',
+              border: '1px solid hsl(var(--border))',
+              borderRadius: '8px',
+              fontSize: '12px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            }}
+            labelStyle={{ fontWeight: 600, marginBottom: 4 }}
+          />
+          {(activeTab === 'all' || activeTab === 'income') && (
+            <Area
+              type="monotone"
+              dataKey="ingresos"
+              stroke="#f97316"
+              strokeWidth={2}
+              fill="url(#ingresosGrad)"
+              dot={{ fill: '#f97316', r: 3, strokeWidth: 0 }}
+              activeDot={{ r: 5, fill: '#f97316', strokeWidth: 0 }}
+            />
+          )}
+          {(activeTab === 'all' || activeTab === 'expense') && (
+            <Area
+              type="monotone"
+              dataKey="egresos"
+              stroke="#ef4444"
+              strokeWidth={2}
+              fill="url(#egresosGrad)"
+              dot={{ fill: '#ef4444', r: 3, strokeWidth: 0 }}
+              activeDot={{ r: 5, fill: '#ef4444', strokeWidth: 0 }}
+            />
+          )}
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
 export default function AdminAccountingPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [typeFilter, setTypeFilter] = useState('all')
+  const [activeTab, setActiveTab] = useState<'all' | 'income' | 'expense'>('all')
   const [paymentFilter, setPaymentFilter] = useState('all')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [showDateFilter, setShowDateFilter] = useState(false)
   const [toasts, setToasts] = useState<Toast[]>([])
   const [summary, setSummary] = useState<any>({})
   const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 0 })
+  const [chartData, setChartData] = useState<ChartPoint[]>([])
+  const [chartLoading, setChartLoading] = useState(true)
 
   // Modal states
   const [showModal, setShowModal] = useState(false)
@@ -257,11 +358,22 @@ export default function AdminAccountingPage() {
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000)
   }
 
+  const fetchChartData = async () => {
+    try {
+      const res = await fetch('/api/admin/accounting?chartData=true')
+      const data = await res.json()
+      if (data.chartData) setChartData(data.chartData)
+    } catch { /* ignore */ } finally {
+      setChartLoading(false)
+    }
+  }
+
   const fetchTransactions = useCallback(async () => {
     try {
       const params = new URLSearchParams()
       if (search) params.set('search', search)
-      if (typeFilter !== 'all') params.set('type', typeFilter)
+      if (activeTab === 'income') params.set('typeGroup', 'income')
+      else if (activeTab === 'expense') params.set('typeGroup', 'expense')
       if (paymentFilter === 'pending') {
         params.set('paymentStatus', 'pending')
       } else if (paymentFilter !== 'all') {
@@ -282,12 +394,11 @@ export default function AdminAccountingPage() {
         showToast(data.error || 'Error al cargar transacciones', 'error')
       }
     } catch (err: any) {
-      console.error('[v0] Fetch error:', err)
       showToast('Error de conexion al cargar transacciones', 'error')
     } finally {
       setLoading(false)
     }
-  }, [search, typeFilter, paymentFilter, dateFrom, dateTo, pagination.page])
+  }, [search, activeTab, paymentFilter, dateFrom, dateTo, pagination.page])
 
   const fetchProducts = async () => {
     try {
@@ -305,6 +416,7 @@ export default function AdminAccountingPage() {
 
   useEffect(() => {
     fetchProducts()
+    fetchChartData()
   }, [])
 
   const openSaleModal = () => {
@@ -359,7 +471,6 @@ export default function AdminAccountingPage() {
       const items = [...prev.items]
       items[index] = { ...items[index], [field]: value }
 
-      // If selecting a product, fill name and price
       if (field === 'productId' && value) {
         const product = products.find(p => p.id === Number(value))
         if (product) {
@@ -376,7 +487,6 @@ export default function AdminAccountingPage() {
   const saleTotal = saleSubtotal + Number(saleForm.shippingCost || 0) - Number(saleForm.discount || 0)
 
   const handleSaveSale = async () => {
-    // Validate
     const validItems = saleForm.items.filter(i => i.productName && i.unitPrice > 0)
     if (validItems.length === 0) {
       showToast('Agrega al menos un producto', 'error')
@@ -418,7 +528,8 @@ export default function AdminAccountingPage() {
         showToast('Venta registrada exitosamente', 'success')
         setShowModal(false)
         fetchTransactions()
-        fetchProducts() // Refresh stock
+        fetchProducts()
+        fetchChartData()
       } else {
         showToast(data.error || 'Error al registrar venta', 'error')
       }
@@ -460,6 +571,7 @@ export default function AdminAccountingPage() {
         showToast('Gasto registrado exitosamente', 'success')
         setShowModal(false)
         fetchTransactions()
+        fetchChartData()
       } else {
         showToast(data.error || 'Error al registrar gasto', 'error')
       }
@@ -511,10 +623,8 @@ export default function AdminAccountingPage() {
         showToast('Abono registrado exitosamente', 'success')
         setShowAbonoForm(false)
         setAbonoForm({ amount: '', paymentMethod: 'cash', paymentReference: '', notes: '', paymentDate: getBogotaDateTimeStr() })
-        // Refresh payments and transactions
         fetchPayments(viewTransaction.id)
         fetchTransactions()
-        // Update viewTransaction locally
         setViewTransaction(prev => prev ? {
           ...prev,
           amount_paid: data.totalPaid,
@@ -561,13 +671,11 @@ export default function AdminAccountingPage() {
     setViewTransaction(tx)
     setPayments([])
     setShowAbonoForm(false)
-    // Fetch payments for sales with pending status or any transaction that has partial payments
     if (tx.type === 'physical_sale' || tx.type === 'online_sale') {
       fetchPayments(tx.id)
     }
   }
 
-  // Force toggle payment status (mark as paid or mark as pending)
   const handleForcePaymentStatus = async (newStatus: 'approved' | 'pending') => {
     if (!viewTransaction) return
     setForcingPayment(true)
@@ -666,7 +774,7 @@ export default function AdminAccountingPage() {
     try {
       const newAmount = Number(editPaymentForm.amount)
       const amountChanged = newAmount !== editingPayment.amount
-      
+
       const res = await fetch('/api/admin/accounting/payments', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -685,7 +793,6 @@ export default function AdminAccountingPage() {
         setEditingPayment(null)
         fetchPayments(viewTransaction.id)
         fetchTransactions()
-        // Update view if totals changed
         if (data.totalPaid !== undefined) {
           setViewTransaction(prev => prev ? {
             ...prev,
@@ -713,6 +820,7 @@ export default function AdminAccountingPage() {
       if (data.success) {
         showToast('Transaccion eliminada', 'success')
         fetchTransactions()
+        fetchChartData()
       } else {
         showToast(data.error || 'Error al eliminar', 'error')
       }
@@ -727,7 +835,6 @@ export default function AdminAccountingPage() {
   const exportCSV = async () => {
     try {
       const params = new URLSearchParams()
-      if (typeFilter !== 'all') params.set('type', typeFilter)
       if (dateFrom) params.set('dateFrom', dateFrom)
       if (dateTo) params.set('dateTo', dateTo)
       params.set('type', 'accounting')
@@ -738,7 +845,7 @@ export default function AdminAccountingPage() {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `contabilidad-${new Date().toISOString().split('T')[0]}.csv`
+      a.download = `finanzas-${new Date().toISOString().split('T')[0]}.csv`
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
@@ -759,6 +866,22 @@ export default function AdminAccountingPage() {
   }
 
   const netIncome = Number(summary.totalIncome || 0) - Number(summary.totalRefunds || 0) - Number(summary.totalExpenses || 0)
+  const hasActiveFilters = search || paymentFilter !== 'all' || dateFrom || dateTo
+
+  const clearFilters = () => {
+    setSearch('')
+    setPaymentFilter('all')
+    setDateFrom('')
+    setDateTo('')
+    setShowDateFilter(false)
+    setPagination(prev => ({ ...prev, page: 1 }))
+  }
+
+  const tabs = [
+    { value: 'all' as const, label: 'Todo' },
+    { value: 'income' as const, label: 'Ingresos' },
+    { value: 'expense' as const, label: 'Egresos' },
+  ]
 
   return (
     <div className="space-y-6 pt-16 lg:pt-0">
@@ -780,9 +903,9 @@ export default function AdminAccountingPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Contabilidad</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Finanzas</h1>
           <p className="text-muted-foreground text-sm">
-            Ventas online (automático) · Ventas físicas y gastos (manual)
+            Ingresos y egresos historicos de tu negocio
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -797,115 +920,119 @@ export default function AdminAccountingPage() {
         </div>
       </div>
 
-
-      {/* Summary — 3 main + 3 secondary */}
-      <div className="space-y-3">
-        {/* Main row */}
-        <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
-          <Card className="admin-card">
-            <CardContent className="pt-5 pb-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1">Ingresos</p>
-                  <div className="text-2xl font-bold text-green-500">{formatPrice(Number(summary.totalIncome || 0))}</div>
-                  <p className="text-xs text-muted-foreground mt-1">Ventas cobradas</p>
-                </div>
-                <div className="h-9 w-9 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
-                  <TrendingUp className="h-4 w-4 text-green-500" />
-                </div>
+      {/* Summary Cards */}
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        <Card className="admin-card">
+          <CardContent className="pt-5 pb-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1">Ingresos</p>
+                <div className="text-2xl font-bold text-green-500">{formatPrice(Number(summary.totalIncome || 0))}</div>
+                <p className="text-[11px] text-muted-foreground mt-1">Ventas cobradas</p>
               </div>
-            </CardContent>
-          </Card>
+              <div className="h-9 w-9 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
+                <TrendingUp className="h-4 w-4 text-green-500" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-          <Card className="admin-card">
-            <CardContent className="pt-5 pb-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1">Gastos</p>
-                  <div className="text-2xl font-bold text-red-500">{formatPrice(Number(summary.totalExpenses || 0))}</div>
-                  <p className="text-xs text-muted-foreground mt-1">Total de egresos</p>
+        <Card className="admin-card">
+          <CardContent className="pt-5 pb-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1">Egresos</p>
+                <div className="text-2xl font-bold text-red-500">{formatPrice(Number(summary.totalExpenses || 0))}</div>
+                <p className="text-[11px] text-muted-foreground mt-1">Total de gastos</p>
+              </div>
+              <div className="h-9 w-9 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
+                <TrendingDown className="h-4 w-4 text-red-500" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className={`admin-card ${netIncome >= 0 ? 'border-green-500/20' : 'border-red-500/20'}`}>
+          <CardContent className="pt-5 pb-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1">Ganancia neta</p>
+                <div className={`text-2xl font-bold ${netIncome >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                  {formatPrice(netIncome)}
                 </div>
-                <div className="h-9 w-9 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
-                  <TrendingDown className="h-4 w-4 text-red-500" />
+                <p className="text-[11px] text-muted-foreground mt-1">Ingresos − Egresos</p>
+              </div>
+              <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${netIncome >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+                <DollarSign className={`h-4 w-4 ${netIncome >= 0 ? 'text-green-500' : 'text-red-500'}`} />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className={`admin-card ${Number(summary.pendingBalance || 0) > 0 ? 'border-yellow-500/25' : ''}`}>
+          <CardContent className="pt-5 pb-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1">Por Cobrar</p>
+                <div className={`text-2xl font-bold ${Number(summary.pendingBalance || 0) > 0 ? 'text-yellow-500' : ''}`}>
+                  {formatPrice(Number(summary.pendingBalance || 0))}
                 </div>
+                <p className="text-[11px] text-muted-foreground mt-1">{summary.partialCount || 0} con saldo pendiente</p>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card className={`admin-card ${netIncome >= 0 ? 'border-green-500/20' : 'border-red-500/20'}`}>
-            <CardContent className="pt-5 pb-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1">Ganancia neta</p>
-                  <div className={`text-2xl font-bold ${netIncome >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    {formatPrice(netIncome)}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">Ingresos − Gastos</p>
-                </div>
-                <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${netIncome >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
-                  <DollarSign className={`h-4 w-4 ${netIncome >= 0 ? 'text-green-500' : 'text-red-500'}`} />
-                </div>
+              <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${Number(summary.pendingBalance || 0) > 0 ? 'bg-yellow-500/10' : 'bg-secondary'}`}>
+                <Receipt className={`h-4 w-4 ${Number(summary.pendingBalance || 0) > 0 ? 'text-yellow-500' : 'text-muted-foreground'}`} />
               </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Secondary row */}
-        <div className="grid gap-3 grid-cols-3">
-          <Card className="admin-card">
-            <CardContent className="pt-4 pb-3">
-              <div className="flex items-center gap-2 mb-1">
-                <ShoppingCart className="h-3.5 w-3.5 text-blue-500" />
-                <p className="text-xs text-muted-foreground">Ventas Online</p>
-              </div>
-              <p className="text-base font-bold">{formatPrice(Number(summary.onlineTotal || 0))}</p>
-              <p className="text-[11px] text-muted-foreground">{summary.onlineSales || 0} transacciones</p>
-            </CardContent>
-          </Card>
-
-          <Card className="admin-card">
-            <CardContent className="pt-4 pb-3">
-              <div className="flex items-center gap-2 mb-1">
-                <Store className="h-3.5 w-3.5 text-green-500" />
-                <p className="text-xs text-muted-foreground">Ventas Físicas</p>
-              </div>
-              <p className="text-base font-bold">{formatPrice(Number(summary.physicalTotal || 0))}</p>
-              <p className="text-[11px] text-muted-foreground">{summary.physicalSales || 0} transacciones</p>
-            </CardContent>
-          </Card>
-
-          <Card className={`admin-card ${Number(summary.pendingBalance || 0) > 0 ? 'border-yellow-500/25' : ''}`}>
-            <CardContent className="pt-4 pb-3">
-              <div className="flex items-center gap-2 mb-1">
-                <Receipt className={`h-3.5 w-3.5 ${Number(summary.pendingBalance || 0) > 0 ? 'text-yellow-500' : 'text-muted-foreground'}`} />
-                <p className="text-xs text-muted-foreground">Por Cobrar</p>
-              </div>
-              <p className={`text-base font-bold ${Number(summary.pendingBalance || 0) > 0 ? 'text-yellow-500' : ''}`}>
-                {formatPrice(Number(summary.pendingBalance || 0))}
-              </p>
-              <p className="text-[11px] text-muted-foreground">{summary.partialCount || 0} con saldo pendiente</p>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col gap-3">
-        {/* Row 1: type tabs + search + payment filter */}
-        <div className="flex flex-wrap gap-2 items-center">
-          {/* Type tabs */}
+      {/* Finance Chart */}
+      <Card className="admin-card">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base font-semibold">
+              {activeTab === 'income' ? 'Ingresos históricos' : activeTab === 'expense' ? 'Egresos históricos' : 'Ingresos vs Egresos'}
+            </CardTitle>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              {(activeTab === 'all' || activeTab === 'income') && (
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block w-3 h-0.5 rounded-full bg-orange-500" />
+                  Ingresos
+                </span>
+              )}
+              {(activeTab === 'all' || activeTab === 'expense') && (
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block w-3 h-0.5 rounded-full bg-red-500" />
+                  Egresos
+                </span>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {chartLoading ? (
+            <div className="h-[200px] flex items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <FinanceChart data={chartData} activeTab={activeTab} />
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Tabs + Filters */}
+      <div className="space-y-3">
+        {/* Tab selector + filter controls */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Tabs */}
           <div className="flex items-center gap-1 p-1 rounded-xl bg-secondary/40 shrink-0">
-            {[
-              { value: 'all',           label: 'Todo' },
-              { value: 'online_sale',   label: 'Online' },
-              { value: 'physical_sale', label: 'Física' },
-              { value: 'expense',       label: 'Gastos' },
-            ].map(tab => (
+            {tabs.map(tab => (
               <button
                 key={tab.value}
-                onClick={() => { setTypeFilter(tab.value); setPagination(prev => ({ ...prev, page: 1 })) }}
-                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
-                  typeFilter === tab.value
+                onClick={() => { setActiveTab(tab.value); setPagination(prev => ({ ...prev, page: 1 })) }}
+                className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all ${
+                  activeTab === tab.value
                     ? 'bg-background text-foreground shadow-sm border border-border'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
@@ -919,18 +1046,18 @@ export default function AdminAccountingPage() {
           <div className="relative flex-1 min-w-[180px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
-              placeholder="Buscar por cliente, pedido..."
+              placeholder="Buscar por cliente, descripcion..."
               className="pl-9"
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPagination(prev => ({ ...prev, page: 1 })) }}
             />
           </div>
 
-          {/* Payment filter — solo los que usas */}
+          {/* Payment method filter */}
           <Select value={paymentFilter} onValueChange={(v) => { setPaymentFilter(v); setPagination(prev => ({ ...prev, page: 1 })) }}>
             <SelectTrigger className="w-[150px] shrink-0">
               <CreditCard className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Cobro" />
+              <SelectValue placeholder="Metodo" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
@@ -940,38 +1067,56 @@ export default function AdminAccountingPage() {
             </SelectContent>
           </Select>
 
-          {(search || typeFilter !== 'all' || paymentFilter !== 'all' || dateFrom || dateTo) && (
-            <Button variant="ghost" size="sm" className="shrink-0" onClick={() => {
-              setSearch(''); setTypeFilter('all'); setPaymentFilter('all')
-              setDateFrom(''); setDateTo('')
-              setPagination(prev => ({ ...prev, page: 1 }))
-            }}>
+          {/* Date filter toggle */}
+          <Button
+            variant={showDateFilter ? 'secondary' : 'outline'}
+            size="sm"
+            onClick={() => setShowDateFilter(v => !v)}
+            className="shrink-0 gap-2"
+          >
+            <Calendar className="h-4 w-4" />
+            Fecha
+            {(dateFrom || dateTo) && (
+              <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
+            )}
+          </Button>
+
+          {/* Clear filters */}
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" className="shrink-0" onClick={clearFilters}>
               <X className="mr-1 h-4 w-4" />
               Limpiar
             </Button>
           )}
         </div>
 
-        {/* Row 2: date range — opcional */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-muted-foreground shrink-0">Fecha:</span>
-          <Input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => { setDateFrom(e.target.value); setPagination(prev => ({ ...prev, page: 1 })) }}
-            className="w-[140px] text-sm"
-          />
-          <span className="text-muted-foreground text-sm">→</span>
-          <Input
-            type="date"
-            value={dateTo}
-            onChange={(e) => { setDateTo(e.target.value); setPagination(prev => ({ ...prev, page: 1 })) }}
-            className="w-[140px] text-sm"
-          />
-        </div>
+        {/* Date range — only when toggled */}
+        {showDateFilter && (
+          <div className="flex items-center gap-2 flex-wrap pl-1">
+            <span className="text-xs text-muted-foreground shrink-0">Desde:</span>
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => { setDateFrom(e.target.value); setPagination(prev => ({ ...prev, page: 1 })) }}
+              className="w-[140px] text-sm"
+            />
+            <span className="text-muted-foreground text-sm">→</span>
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => { setDateTo(e.target.value); setPagination(prev => ({ ...prev, page: 1 })) }}
+              className="w-[140px] text-sm"
+            />
+            {(dateFrom || dateTo) && (
+              <Button variant="ghost" size="sm" onClick={() => { setDateFrom(''); setDateTo('') }}>
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Transactions */}
+      {/* Transactions Table */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -979,20 +1124,24 @@ export default function AdminAccountingPage() {
       ) : transactions.length === 0 ? (
         <div className="admin-card flex flex-col items-center justify-center py-12 text-center">
           <Receipt className="h-12 w-12 text-muted-foreground mb-4" />
-          <p className="text-muted-foreground mb-4">No hay transacciones</p>
-          <Button onClick={openSaleModal}>
-            <Plus className="mr-2 h-4 w-4" />
-            Registrar primera transaccion
-          </Button>
+          <p className="text-muted-foreground mb-4">
+            {hasActiveFilters ? 'Sin resultados para estos filtros' : 'No hay transacciones'}
+          </p>
+          {!hasActiveFilters && (
+            <Button onClick={openSaleModal}>
+              <Plus className="mr-2 h-4 w-4" />
+              Registrar primera transaccion
+            </Button>
+          )}
         </div>
       ) : (
         <>
-          {/* Desktop table — 5 cols */}
+          {/* Desktop table */}
           <div className="hidden md:block rounded-xl border border-border overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="pl-3 w-[44%]">Transacción</TableHead>
+                  <TableHead className="pl-3 w-[44%]">Registro</TableHead>
                   <TableHead className="w-[120px]">Fecha</TableHead>
                   <TableHead className="text-right w-[150px]">Total</TableHead>
                   <TableHead className="w-[130px]">Método</TableHead>
@@ -1006,17 +1155,16 @@ export default function AdminAccountingPage() {
                   const paid  = Number(tx.amount_paid || 0)
                   const total = Number(tx.total || 0)
                   const pct   = total > 0 ? Math.min((paid / total) * 100, 100) : 0
-                  const indicatorColor = tx.type === 'online_sale' ? 'bg-blue-500' :
-                    tx.type === 'physical_sale' ? 'bg-green-500' :
-                    tx.type === 'expense'       ? 'bg-orange-500' :
-                    tx.type === 'refund'        ? 'bg-red-500' : 'bg-muted-foreground/40'
-                  const typePill = tx.type === 'online_sale' ? 'bg-blue-500/10 text-blue-400' :
-                    tx.type === 'physical_sale' ? 'bg-green-500/10 text-green-400' :
-                    tx.type === 'expense'       ? 'bg-orange-500/10 text-orange-400' :
-                    tx.type === 'refund'        ? 'bg-red-500/10 text-red-400' : 'bg-muted text-muted-foreground'
+                  const indicatorColor = tx.type === 'online_sale'    ? 'bg-blue-500' :
+                                         tx.type === 'physical_sale'  ? 'bg-green-500' :
+                                         tx.type === 'expense'        ? 'bg-orange-500' :
+                                         tx.type === 'refund'         ? 'bg-red-500' : 'bg-muted-foreground/40'
+                  const typePill = tx.type === 'online_sale'    ? 'bg-blue-500/10 text-blue-400' :
+                                   tx.type === 'physical_sale'  ? 'bg-green-500/10 text-green-400' :
+                                   tx.type === 'expense'        ? 'bg-orange-500/10 text-orange-400' :
+                                   tx.type === 'refund'         ? 'bg-red-500/10 text-red-400' : 'bg-muted text-muted-foreground'
                   return (
                     <TableRow key={tx.id} className="group">
-                      {/* Transacción */}
                       <TableCell className="pl-0 pr-4">
                         <div className="flex items-center gap-2.5">
                           <div className={`w-0.5 h-9 rounded-full shrink-0 ${indicatorColor}`} />
@@ -1040,13 +1188,11 @@ export default function AdminAccountingPage() {
                         </div>
                       </TableCell>
 
-                      {/* Fecha */}
                       <TableCell className="tabular-nums">
                         <p className="text-sm">{formatDate(tx.transaction_date)}</p>
                         <p className="text-xs text-muted-foreground">{formatTime(tx.transaction_date)}</p>
                       </TableCell>
 
-                      {/* Total + cobro */}
                       <TableCell className="text-right">
                         <p className={`text-sm font-bold ${isExpense ? 'text-red-500' : ''}`}>
                           {isExpense ? '−' : ''}{formatPrice(total)}
@@ -1069,14 +1215,12 @@ export default function AdminAccountingPage() {
                         )}
                       </TableCell>
 
-                      {/* Método */}
                       <TableCell>
                         <span className="text-xs text-muted-foreground">
                           {paymentMethodLabels[tx.payment_method] || tx.payment_method}
                         </span>
                       </TableCell>
 
-                      {/* Acciones — solo visibles al hover */}
                       <TableCell>
                         <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openViewTransaction(tx)}>
@@ -1109,10 +1253,10 @@ export default function AdminAccountingPage() {
               const paid  = Number(tx.amount_paid || 0)
               const total = Number(tx.total || 0)
               const pct   = total > 0 ? Math.min((paid / total) * 100, 100) : 0
-              const borderColor = tx.type === 'online_sale' ? 'border-l-blue-500' :
-                tx.type === 'physical_sale' ? 'border-l-green-500' :
-                tx.type === 'expense'       ? 'border-l-orange-500' :
-                tx.type === 'refund'        ? 'border-l-red-500' : 'border-l-border'
+              const borderColor = tx.type === 'online_sale'   ? 'border-l-blue-500' :
+                                  tx.type === 'physical_sale' ? 'border-l-green-500' :
+                                  tx.type === 'expense'       ? 'border-l-orange-500' :
+                                  tx.type === 'refund'        ? 'border-l-red-500' : 'border-l-border'
               return (
                 <div key={tx.id} className={`admin-card border-l-2 ${borderColor} pl-3 pr-4 py-3`}>
                   <div className="flex items-start justify-between gap-2 mb-2">
@@ -1177,7 +1321,7 @@ export default function AdminAccountingPage() {
       {/* Pagination */}
       {pagination.totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">{pagination.total} transacciones en total</p>
+          <p className="text-sm text-muted-foreground">{pagination.total} registros en total</p>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -1288,7 +1432,6 @@ export default function AdminAccountingPage() {
               {/* ===== SECCION DE ABONOS ===== */}
               {(viewTransaction.type === 'physical_sale' || viewTransaction.type === 'online_sale') && (
                 <div className="border-t pt-4 space-y-4">
-                  {/* Barra de progreso de pago */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <h4 className="font-semibold text-sm">Progreso de Pago</h4>
@@ -1305,10 +1448,10 @@ export default function AdminAccountingPage() {
                     <div className="w-full h-3 rounded-full bg-muted overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all ${
-                          Number(viewTransaction.amount_paid) >= Number(viewTransaction.total) 
-                            ? 'bg-green-500' 
-                            : Number(viewTransaction.amount_paid) > 0 
-                              ? 'bg-yellow-500' 
+                          Number(viewTransaction.amount_paid) >= Number(viewTransaction.total)
+                            ? 'bg-green-500'
+                            : Number(viewTransaction.amount_paid) > 0
+                              ? 'bg-yellow-500'
                               : 'bg-red-500'
                         }`}
                         style={{ width: `${Math.min((Number(viewTransaction.amount_paid) / Number(viewTransaction.total)) * 100, 100)}%` }}
@@ -1324,7 +1467,6 @@ export default function AdminAccountingPage() {
                     </div>
                   </div>
 
-                  {/* Force payment status buttons */}
                   <div className="flex flex-wrap gap-2">
                     {Number(viewTransaction.amount_paid) < Number(viewTransaction.total) && (
                       <Button
@@ -1352,7 +1494,6 @@ export default function AdminAccountingPage() {
                     )}
                   </div>
 
-                  {/* Lista de abonos */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <h4 className="font-semibold text-sm">Historial de Abonos</h4>
@@ -1396,7 +1537,6 @@ export default function AdminAccountingPage() {
                                 size="icon"
                                 className="h-7 w-7"
                                 onClick={() => openEditPayment(p)}
-                                title="Editar abono"
                               >
                                 <Pencil className="h-3 w-3" />
                               </Button>
@@ -1416,7 +1556,6 @@ export default function AdminAccountingPage() {
                     )}
                   </div>
 
-                  {/* Form para agregar abono */}
                   {showAbonoForm && (
                     <div className="border rounded-lg p-4 space-y-3 bg-muted/20">
                       <h5 className="font-semibold text-sm">Nuevo Abono</h5>
@@ -1492,13 +1631,11 @@ export default function AdminAccountingPage() {
       {/* Create Transaction Modal */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-xl max-h-[92vh] overflow-y-auto p-0 gap-0">
-          {/* Modal header */}
           <div className="px-6 pt-6 pb-4 border-b border-border">
             <h2 className="text-lg font-bold tracking-tight">Registrar Transacción</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Venta física o gasto del negocio</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Ingreso o egreso del negocio</p>
           </div>
 
-          {/* Type selector */}
           <div className="px-6 pt-4 pb-2">
             <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-secondary/50">
               <button
@@ -1510,7 +1647,7 @@ export default function AdminAccountingPage() {
                 }`}
               >
                 <Banknote className="h-4 w-4 text-green-500" />
-                Venta Física
+                Ingreso / Venta
               </button>
               <button
                 onClick={() => setModalTab('expense')}
@@ -1521,7 +1658,7 @@ export default function AdminAccountingPage() {
                 }`}
               >
                 <TrendingDown className="h-4 w-4 text-red-500" />
-                Gasto
+                Egreso / Gasto
               </button>
             </div>
           </div>
@@ -1529,8 +1666,6 @@ export default function AdminAccountingPage() {
           {/* SALE TAB */}
           {modalTab === 'sale' && (
             <div className="px-6 pb-6 space-y-5 pt-2">
-
-              {/* Pago */}
               <div className="space-y-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Pago</p>
                 <div className="grid grid-cols-2 gap-3">
@@ -1584,7 +1719,6 @@ export default function AdminAccountingPage() {
                 )}
               </div>
 
-              {/* Cliente */}
               <div className="space-y-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Cliente <span className="normal-case font-normal">(opcional)</span></p>
                 <div className="relative">
@@ -1632,7 +1766,6 @@ export default function AdminAccountingPage() {
                 </div>
               </div>
 
-              {/* Productos */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Productos</p>
@@ -1711,7 +1844,6 @@ export default function AdminAccountingPage() {
                 </div>
               </div>
 
-              {/* Resumen + envío/descuento */}
               <div className="rounded-xl border border-border bg-secondary/20 p-4 space-y-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Resumen</p>
                 <div className="grid grid-cols-2 gap-3">
@@ -1754,7 +1886,7 @@ export default function AdminAccountingPage() {
                 <Button variant="outline" size="sm" onClick={() => setShowModal(false)}>Cancelar</Button>
                 <Button size="sm" onClick={handleSaveSale} disabled={saving} className="gap-1.5">
                   {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                  Registrar Venta
+                  Registrar Ingreso
                 </Button>
               </div>
             </div>
@@ -1763,8 +1895,6 @@ export default function AdminAccountingPage() {
           {/* EXPENSE TAB */}
           {modalTab === 'expense' && (
             <div className="px-6 pb-6 space-y-5 pt-2">
-
-              {/* Categoría + descripción */}
               <div className="space-y-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Detalle del Gasto</p>
                 <div className="grid grid-cols-2 gap-3">
@@ -1794,7 +1924,6 @@ export default function AdminAccountingPage() {
                 </div>
               </div>
 
-              {/* Monto + pago */}
               <div className="space-y-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Pago</p>
                 <div className="grid grid-cols-2 gap-3">
@@ -1843,7 +1972,7 @@ export default function AdminAccountingPage() {
                 <Button variant="outline" size="sm" onClick={() => setShowModal(false)}>Cancelar</Button>
                 <Button size="sm" variant="destructive" onClick={handleSaveExpense} disabled={saving} className="gap-1.5">
                   {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <TrendingDown className="h-3.5 w-3.5" />}
-                  Registrar Gasto
+                  Registrar Egreso
                 </Button>
               </div>
             </div>

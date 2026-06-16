@@ -17,17 +17,19 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const type          = searchParams.get('type') || ''
+    const typeGroup     = searchParams.get('typeGroup') || ''
     const paymentMethod = searchParams.get('paymentMethod') || ''
     const paymentStatus = searchParams.get('paymentStatus') || ''
     const dateFrom      = searchParams.get('dateFrom') || ''
     const dateTo        = searchParams.get('dateTo') || ''
     const search        = searchParams.get('search') || ''
+    const includeChart  = searchParams.get('chartData') === 'true'
     const page  = parseInt(searchParams.get('page')  || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
     const offset = (page - 1) * limit
 
     let sql = `
-      SELECT t.*, 
+      SELECT t.*,
              (SELECT COUNT(*) FROM accounting_transaction_items WHERE transaction_id = t.id) as item_count,
              (t.total - t.amount_paid) as balance
       FROM accounting_transactions t
@@ -42,6 +44,14 @@ export async function GET(request: NextRequest) {
       countSql += ' AND t.type = ?'
       params.push(type)
       countParams.push(type)
+    }
+
+    if (typeGroup === 'income') {
+      sql += ` AND t.type IN ('online_sale', 'physical_sale')`
+      countSql += ` AND t.type IN ('online_sale', 'physical_sale')`
+    } else if (typeGroup === 'expense') {
+      sql += ` AND t.type IN ('expense', 'refund')`
+      countSql += ` AND t.type IN ('expense', 'refund')`
     }
 
     if (paymentMethod && paymentMethod !== 'all') {
@@ -117,6 +127,21 @@ export async function GET(request: NextRequest) {
 
     const summary = await query<any[]>(summarySql, summaryParams)
 
+    let chartData: any[] = []
+    if (includeChart) {
+      chartData = await query<any[]>(`
+        SELECT
+          DATE_FORMAT(t.transaction_date, '%Y-%m') as month,
+          DATE_FORMAT(t.transaction_date, '%b %Y') as label,
+          COALESCE(SUM(CASE WHEN t.type IN ('online_sale','physical_sale') THEN t.amount_paid ELSE 0 END), 0) as ingresos,
+          COALESCE(SUM(CASE WHEN t.type IN ('expense','refund') AND t.payment_status = 'approved' THEN t.total ELSE 0 END), 0) as egresos
+        FROM accounting_transactions t
+        GROUP BY DATE_FORMAT(t.transaction_date, '%Y-%m'), DATE_FORMAT(t.transaction_date, '%b %Y')
+        ORDER BY month ASC
+        LIMIT 24
+      `)
+    }
+
     return NextResponse.json({
       success: true,
       transactions,
@@ -126,7 +151,8 @@ export async function GET(request: NextRequest) {
         total: countResult[0]?.total || 0,
         totalPages: Math.ceil((countResult[0]?.total || 0) / limit)
       },
-      summary: summary[0] || {}
+      summary: summary[0] || {},
+      ...(includeChart ? { chartData } : {})
     })
   } catch (error: any) {
     console.error('[v0] Error fetching accounting:', error?.message, error?.code, error?.sqlMessage)
