@@ -11,10 +11,13 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Menu,
   Receipt,
   BarChart3,
-  MessageCircle,
+  TrendingUp,
+  TrendingDown,
+  Wallet,
   X,
   Store,
   ExternalLink,
@@ -40,9 +43,10 @@ const mainNavigation = [
   { name: 'Clientes',     href: '/admin/clientes',   icon: Users,           description: 'Base de clientes',      badgeKey: '' },
 ]
 
-const analyticsNavigation = [
-  { name: 'Contabilidad', href: '/admin/contabilidad', icon: Receipt,   description: 'Finanzas y pagos',         badgeKey: '' },
-  { name: 'Reportes',     href: '/admin/reportes',     icon: BarChart3, description: 'Estadisticas detalladas',  badgeKey: '' },
+const finanzasSubNav = [
+  { name: 'Ingresos', href: '/admin/finanzas/ingresos', icon: TrendingUp,  description: 'Ventas y cobros' },
+  { name: 'Gastos',   href: '/admin/finanzas/gastos',   icon: TrendingDown, description: 'Egresos del negocio' },
+  { name: 'Reportes', href: '/admin/reportes',           icon: BarChart3,   description: 'Estadisticas detalladas' },
 ]
 
 const settingsNavigation = [
@@ -60,6 +64,79 @@ interface NavItemProps {
   isCollapsed: boolean
   liveCounts: LiveCounts
   onClose?: () => void
+}
+
+function NavGroupFinanzas({ isCollapsed, onClose }: { isCollapsed: boolean; onClose?: () => void }) {
+  const pathname = usePathname()
+  const isAnyActive = finanzasSubNav.some(s => pathname.startsWith(s.href))
+  const [open, setOpen] = useState(isAnyActive)
+
+  if (isCollapsed) {
+    return (
+      <Tooltip delayDuration={0}>
+        <TooltipTrigger asChild>
+          <Link
+            href="/admin/finanzas/ingresos"
+            onClick={onClose}
+            className={cn(
+              'group flex items-center justify-center px-3 py-2.5 rounded-lg transition-all duration-200 relative',
+              isAnyActive
+                ? 'bg-foreground text-background shadow-sm'
+                : 'text-muted-foreground hover:text-foreground hover:bg-sidebar-accent'
+            )}
+          >
+            <Wallet className="h-[18px] w-[18px]" />
+          </Link>
+        </TooltipTrigger>
+        <TooltipContent side="right" className="flex flex-col gap-0.5">
+          <span className="font-medium">Finanzas</span>
+          <span className="text-xs text-muted-foreground">Ingresos, Gastos, Reportes</span>
+        </TooltipContent>
+      </Tooltip>
+    )
+  }
+
+  return (
+    <div>
+      <button
+        onClick={() => setOpen(v => !v)}
+        className={cn(
+          'w-full group flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-200 rounded-lg',
+          isAnyActive && !open
+            ? 'bg-foreground text-background shadow-sm'
+            : 'text-muted-foreground hover:text-foreground hover:bg-sidebar-accent'
+        )}
+      >
+        <Wallet className="h-[18px] w-[18px] shrink-0" />
+        <span className="flex-1 text-left">Finanzas</span>
+        <ChevronDown className={cn('h-4 w-4 transition-transform duration-200', open && 'rotate-180')} />
+      </button>
+
+      {open && (
+        <div className="mt-1 ml-4 pl-3 border-l border-border/40 space-y-0.5">
+          {finanzasSubNav.map((sub) => {
+            const active = pathname === sub.href || (sub.href !== '/admin' && pathname.startsWith(sub.href))
+            return (
+              <Link
+                key={sub.href}
+                href={sub.href}
+                onClick={onClose}
+                className={cn(
+                  'flex items-center gap-2.5 px-2.5 py-2 text-sm font-medium rounded-lg transition-all duration-200',
+                  active
+                    ? 'bg-foreground text-background shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-sidebar-accent'
+                )}
+              >
+                <sub.icon className="h-4 w-4 shrink-0" />
+                <span>{sub.name}</span>
+              </Link>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function NavItem({ item, isActive, isCollapsed, liveCounts, onClose }: NavItemProps) {
@@ -196,23 +273,14 @@ function SidebarContent({
             ))}
           </div>
 
-          {/* Analytics Section */}
+          {/* Finanzas Section */}
           <div className="space-y-1">
             {!isCollapsed && (
               <p className="px-3 mb-2 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-                Analitica
+                Finanzas
               </p>
             )}
-            {analyticsNavigation.map((item) => (
-              <NavItem
-                key={item.name}
-                item={item}
-                isActive={isActive(item.href)}
-                isCollapsed={isCollapsed}
-                liveCounts={liveCounts}
-                onClose={onClose}
-              />
-            ))}
+            <NavGroupFinanzas isCollapsed={isCollapsed} onClose={onClose} />
           </div>
 
           {/* Settings Section */}
